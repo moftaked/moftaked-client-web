@@ -1,1 +1,33 @@
-/* You can add global styles to this file, and also import other style files */
+body {
+    background-color: #1D6FA5;
+    height: 100vh;
+    max-height: 100%;
+    margin: 0px;
+    color: #F5F5F5;
+    font-family: 'tajawal-regular';
+}
+
+@font-face {
+    font-family: 'almarai-bold';
+    src: url('/fonts/Almarai-Bold.ttf') format('truetype'),
+}
+
+@font-face {
+    font-family: 'tajawal-light';
+    src: url('/fonts/Tajawal-Light.ttf') format('truetype'),
+}
+
+@font-face {
+    font-family: 'tajawal-regular';
+    src: url('/fonts/Tajawal-Regular.ttf') format('truetype'),
+}
+
+@font-face {
+    font-family: 'tajawal-medium';
+    src: url('/fonts/Tajawal-Medium.ttf') format('truetype'),
+}
+
+@font-face {
+    font-family: 'tajawal-bold';
+    src: url('/fonts/Tajawal-Bold.ttf') format('truetype'),
+}

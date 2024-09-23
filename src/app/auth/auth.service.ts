@@ -1,6 +1,5 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { ConfigService } from '../services/config.service';
 
 export interface loginResultBody {
   access_token: string;
@@ -12,10 +11,10 @@ export interface loginResultBody {
 })
 export class AuthService {
 
-  constructor(private http: HttpClient, private config: ConfigService,) { }
+  constructor(private http: HttpClient,) { }
 
   login(username: string | null | undefined, password: string | null | undefined) {
-    return this.http.post<loginResultBody>(`${this.config.getBackendLink()}/auth/login`, {username, password}, {observe: 'response'});
+    return this.http.post<loginResultBody>(`/auth/login`, {username, password}, {observe: 'response'});
   }
 
   setJwt(token: string) {

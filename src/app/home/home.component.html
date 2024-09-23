@@ -7,9 +7,7 @@
             </div>
             <div id="section-body">
                 @for (group of classes; track group.class_id) {
-                    <div class="card">
-                        {{group.class_name}}
-                    </div>
+                    <app-class-card [classId]="group.class_id" [name]="group.class_name" (clickedOnCard)="onCardClick($event)"/>
                 }
                 <hr>
             </div>

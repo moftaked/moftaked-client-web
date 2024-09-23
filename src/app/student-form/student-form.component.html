@@ -1,0 +1,44 @@
+<app-app-header />
+<div class="body">
+    <div id="page-title">
+        @if (mode == 'add') {
+            مخدوم جديد
+        }
+        @if (mode == 'edit') {
+            تعديل بيانات {{student.student_name}}
+        }
+    </div>
+    <form [formGroup]="studentForm" (ngSubmit)="onSubmit()">
+        <div class="form-control">
+            <label for="name">الاسم</label>
+            <input type="text" formControlName="student_name" name="name" autocomplete="off"/>
+        </div>
+        <div class="form-control">
+            <label for="address">العنوان</label>
+            <textarea formControlName="address" name="address" rows="3" autocomplete="off"></textarea>
+        </div>
+        <div class="form-control">
+            <label for="district">المنطقة (الأبراج، شبرا، ...)</label>
+            <input type="text" formControlName="district" name="district" autocomplete="off"/>
+        </div>
+        <div class="form-control">
+            <label for="phone">رقم تليفون</label>
+            <input type="text" formControlName="phone_number" name="phone" autocomplete="off"/>
+        </div>
+        <div class="form-control">
+            <label for="secondPhone">رقم تليفون كمان (اختياري)</label>
+            <input type="text" formControlName="second_phone_number" name="secondPhone" autocomplete="off"/>
+        </div>
+        <div class="form-control">
+            <label for="notes">ملاحظات (اختياري)</label>
+            <textarea formControlName="notes" name="notes" rows="3" autocomplete="off"></textarea>
+        </div>
+        @if (successMessage != '') {
+            <app-success-message [message]="successMessage" />
+        }
+        @if (errorMessage != '') {
+            <app-error-message [message]="errorMessage" />
+        }
+        <button [disabled]="buttonDisabled" type="submit">تمام كدا</button>
+    </form>
+</div>

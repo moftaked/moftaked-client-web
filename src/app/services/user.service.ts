@@ -1,13 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { ConfigService } from './config.service';
 import { AuthService } from '../auth/auth.service';
 
 export interface Class {
   class_id: string;
   class_name: string;
 }
-export interface classResultBody {
+export interface userClassesResultBody {
   results: Class[];
 }
 
@@ -16,11 +15,11 @@ export interface classResultBody {
 })
 export class UserService {
 
-  constructor(private http: HttpClient, private config: ConfigService, private authService: AuthService) { }
+  constructor(private http: HttpClient, private authService: AuthService) { }
 
   getClasses() {
-    return this.http.get<classResultBody>(
-      `${this.config.getBackendLink()}/users/${this.getUserId()}/classes`, 
+    return this.http.get<userClassesResultBody>(
+      `/users/${this.getUserId()}/classes`, 
       {
         observe: 'response',
         headers: {

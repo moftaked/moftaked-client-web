@@ -4,6 +4,8 @@ import { PageNotFoundComponent } from './page-not-found/page-not-found.component
 import { HomeComponent } from './home/home.component';
 import { authGuard } from './auth/auth.guard';
 import { EasterEggComponent } from './easter-egg/easter-egg.component';
+import { ClassComponent } from './class/class.component';
+import { StudentFormComponent } from './student-form/student-form.component';
 
 export const routes: Routes = [
     {
@@ -12,13 +14,28 @@ export const routes: Routes = [
         pathMatch: 'full'
     },
     {
+        path: 'login',
+        component: LoginComponent
+    },
+    {
         path: 'home',
         component: HomeComponent,
         canActivate: [authGuard]
     },
     {
-        path: 'login',
-        component: LoginComponent
+        path: 'class/:id',
+        component: ClassComponent,
+        canActivate: [authGuard]
+    },
+    {
+        path: 'class/:classId/add',
+        component: StudentFormComponent,
+        canActivate: [authGuard]
+    },
+    {
+        path: 'student/:studentId/edit',
+        component: StudentFormComponent,
+        canActivate: [authGuard]
     },
     {
         path: 'easteregg',

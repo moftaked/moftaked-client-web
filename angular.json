@@ -13,7 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/moftaked-client-web",
+            "outputPath": "../moftaked-server/client",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -100,11 +100,23 @@
         },
         "deploy": {
           "builder": "angular-cli-ghpages:deploy"
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "src/**/*.ts",
+              "src/**/*.html"
+            ]
+          }
         }
       }
     }
   },
   "cli": {
-    "analytics": "16cb2338-6da4-41a6-aef6-19a4824d94e7"
+    "analytics": "16cb2338-6da4-41a6-aef6-19a4824d94e7",
+    "schematicCollections": [
+      "@angular-eslint/schematics"
+    ]
   }
 }

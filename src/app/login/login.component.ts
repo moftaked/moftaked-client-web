@@ -1,10 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms'
 import { AuthService, loginResultBody } from '../auth/auth.service';
 import { Observable } from 'rxjs';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ErrorMessageComponent } from '../error-message/error-message.component';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { UserService } from '../services/user.service';
 
 
@@ -22,7 +22,6 @@ export class LoginComponent {
   constructor(
     private authService: AuthService, 
     private router: Router, 
-    private route: ActivatedRoute,
     private userService: UserService
   ) {}
   errorMessages = {

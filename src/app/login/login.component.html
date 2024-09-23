@@ -6,11 +6,11 @@
 
         <div id="form-container">
             <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-                <input type="text" formControlName="username" placeholder="اسم المستخدم" dir="autotoo"/>
+                <input type="text" formControlName="username" placeholder="اسم المستخدم"/>
                 <input type="password" formControlName="password" placeholder="الباسورد"/>
                 <button id="login-button" type="submit">تسجيل الدخول</button>
             </form>
-            @if (errorMessage != '') {
+            @if (errorMessage !== '') {
                 <app-error-message [message]="errorMessage" />
             }
         </div>

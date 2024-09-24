@@ -8,6 +8,26 @@
     width: 93.65vw;
 }
 
+.delete-button {
+    user-select: none;
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 1.28vh;
+    gap: 0.438rem;
+
+    width: fit-content;
+    height: fit-content;
+
+    background: #FF3333;
+    border-radius: 5px;
+
+    font-family: 'tajawal-bold';
+    font-size: 2.2vh;
+    line-height: 2.57vh;
+}
+
 form {
     width: 100%;
     flex-grow: 1;

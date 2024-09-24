@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AppHeaderComponent } from "../app-header/app-header.component";
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ErrorMessageComponent } from '../error-message/error-message.component';
-import { StudentFormService } from './student-form.service';
+import { deleteResultBody, StudentFormService } from './student-form.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { SuccessMessageComponent } from '../success-message/success-message.component';
 import { student, StudentService } from '../services/student.service';
@@ -24,13 +24,17 @@ import { Location } from '@angular/common';
 export class StudentFormComponent implements OnInit{
   classId: string | null | undefined;
   studentId: string | null | undefined;
-  mode: 'edit' | 'add' | undefined;
+  mode: 'edit' | 'add' = 'add';
   errorMessage = '';
   successMessage = '';
+  deleteButtonText: 'امسح المخدوم' | 'متأكد؟ اتكى تاني' = 'امسح المخدوم'
+  deleteErrorMessage = '';
+  deleteSuccessMessage = '';
+  deleteButtonClicksCount = 0;
   buttonDisabled = false;
   student: student = {
     student_id: 0,
-    student_name: 'test if it is not changed',
+    student_name: '',
     address: '',
     phone_numbers: '',
     district: '',
@@ -56,13 +60,21 @@ export class StudentFormComponent implements OnInit{
   ngOnInit(): void {
     this.classId = this.route.snapshot.paramMap.get('classId');
     this.studentId = this.route.snapshot.paramMap.get('studentId');
-    if(this.classId != null)
+    console.log(`classId: ${this.classId}`)
+    console.log(`studentId: ${this.studentId}`)
+    console.log(`mode was: ${this.mode}`)
+    if(this.classId != null){
       this.mode = 'add'
-    else if(this.studentId != null)
+      console.log('mode set to add')
+    }
+    else if(this.studentId != null){
       this.mode = 'edit'
+      console.log('mode set to edit')
+
+    }
     console.log(`mode: ${this.mode}`)
 
-    if(this.mode = 'edit') {
+    if(this.mode == 'edit') {
       const observable = this.studentService.getStudent(this.studentId);
       observable.subscribe({
         next: (res) => {
@@ -103,9 +115,9 @@ export class StudentFormComponent implements OnInit{
       else if(controls.district.errors != null)
         this.errorMessage = 'اكتب المنطقة';
       else if(controls.phone_number.errors != null)
-        this.errorMessage = 'اكتب رقم التليفون صح';
+        this.errorMessage = 'اكتب رقم التليفون صح (لازم ارقام انجليزي)';
       else if(controls.second_phone_number.errors != null)
-        this.errorMessage = 'اكتب رقم التليفون التاني صح او امسحه';
+        this.errorMessage = 'اكتب رقم التليفون التاني صح او امسحه (لازم ارقام انجليزي)';
       else if(controls.notes.errors != null)
         this.errorMessage = 'الملاحظات طويلة اوي لازم تكون اقل من 255 حرف';
     }
@@ -173,6 +185,34 @@ export class StudentFormComponent implements OnInit{
           else
             this.errorMessage = 'حصل خطأ غير متوقع من فضلك كلم توني جورج';
         }
+      })
+    }
+  }
+
+  onDeleteButtonClick() {
+    this.deleteButtonClicksCount++;
+    if(this.deleteButtonClicksCount == 1){
+      this.deleteButtonText = 'متأكد؟ اتكى تاني';
+    }
+    else if(this.studentId && this.deleteButtonClicksCount > 1){
+      const observable = this.studentFormService.deleteStudent(this.studentId);
+      observable.subscribe({
+        next: (res) => {
+          if(res.body?.affectedRows){
+            this.deleteSuccessMessage = 'المخدوم اتمسح بنجاح';
+            setTimeout(() => {this.deleteSuccessMessage = ''; this.location.back()}, 2000);
+          }
+          else
+            this.deleteErrorMessage = 'مفيش حاجة اتمسحت';
+        },
+        error: (err: HttpErrorResponse) => {
+          if(err.status == 404)
+            this.errorMessage = 'المخدوم ده مش موجود حاليا';
+          else if (err.status == 401)
+            this.router.navigate(['/login'])
+          else
+            this.errorMessage = 'حصل خطأ غير متوقع من فضلك كلم توني جورج';
+        },
       })
     }
   }

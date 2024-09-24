@@ -2,6 +2,10 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { AuthService } from '../auth/auth.service';
 
+export interface deleteResultBody {
+  affectedRows: number
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -67,5 +71,14 @@ export class StudentFormService {
         }
       }
     );
+  }
+
+  deleteStudent(id: string) {
+    return this.http.delete<deleteResultBody>(`/students/${id}`, {
+      observe: 'response',
+      headers: {
+        'Authorization': this.authService.getAuthorizationHeader()
+      }
+    })
   }
 }

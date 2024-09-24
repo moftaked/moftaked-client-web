@@ -31,7 +31,8 @@
     user-select: none;
     display: flex;
     flex-direction: row;
-    justify-content: flex-end;
+    justify-content: center;
+    text-align: center;
     align-items: center;
     padding: 1.28vh;
     gap: 0.438rem;
@@ -45,7 +46,6 @@
     font-family: 'tajawal-bold';
     font-size: 2.2vh;
     line-height: 2.57vh;
-    user-select: none;
 }
 
 #table {
@@ -107,7 +107,7 @@ hr {
 
 .table-body {
     width: 100%;
-    max-height: 47.79vh;
+    height: 47.79vh;
     overflow-y: auto;
 }
 
@@ -116,6 +116,7 @@ hr {
     flex-direction: row;
     width: 100%;
     gap: 2.88vw;
+    padding-bottom: 3vh;
 }
 
 .cell {

@@ -21,6 +21,7 @@ export class ClassComponent implements OnInit{
   name = '';
   totalCount = 0;
   students: student[] = [];
+  studentsTableExpanded = false;
   attributes = new Map<string, keyof student>();
   attributesOptions = ['العنوان', 'رقم التليفون', 'المنطقة', 'ملاحظات'];
   attributesOptionsCurrentIndex = 1;
@@ -64,6 +65,8 @@ export class ClassComponent implements OnInit{
       error: (err: HttpErrorResponse) => {
         if(err.status == 401)
           this.router.navigate(['/login'])
+        else if(err.status == 403)
+          this.router.navigate(['/home'])
         console.log(err);
       }
     })
@@ -82,6 +85,10 @@ export class ClassComponent implements OnInit{
   onClickaddStudent() {
     this.router.navigate([`/class/${this.id}/add`])
   }
+
+  onClickEvents() {
+    this.router.navigate([`/class/${this.id}/events`])
+  }
   
   onClickEditStudent() {
     this.isEditActive = !(this.isEditActive);
@@ -94,5 +101,9 @@ export class ClassComponent implements OnInit{
   openEditDialog(studentId: number) {
     if(this.isEditActive)
       this.router.navigate([`/student/${studentId}/edit`])
+  }
+
+  toggleStudentsTable() {
+    this.studentsTableExpanded = !this.studentsTableExpanded;
   }
 }

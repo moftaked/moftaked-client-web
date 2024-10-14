@@ -4,6 +4,7 @@ import { Injectable } from '@angular/core';
 export interface loginResultBody {
   access_token: string;
   user_id: string;
+  roles: string;
 }
 
 @Injectable({
@@ -11,7 +12,7 @@ export interface loginResultBody {
 })
 export class AuthService {
 
-  constructor(private http: HttpClient,) { }
+  constructor(private http: HttpClient,) {}
 
   login(username: string | null | undefined, password: string | null | undefined) {
     return this.http.post<loginResultBody>(`/auth/login`, {username, password}, {observe: 'response'});
@@ -23,6 +24,17 @@ export class AuthService {
 
   getJwt(): string | null {
     return window.localStorage.getItem('jwt');
+  }
+
+  setRoles(rolesString: string) {
+    window.localStorage.setItem('roles', rolesString);
+  }
+
+  getRoles(): [{class_id: number, role: string}] | null {
+    const rolesString = window.localStorage.getItem('roles');
+    if(rolesString == null)
+      return null;
+    return JSON.parse(rolesString);
   }
 
   markTokenInvalid() {

@@ -60,11 +60,10 @@ export class LoginComponent {
       observable.subscribe({
         next: (res: HttpResponse<loginResultBody>) => {
           if(typeof res.body?.access_token == 'string'){
-            console.log(`access token: ${res.body?.access_token}`)
             this.authService.setJwt(res.body?.access_token);
+            this.authService.setRoles(res.body?.roles);
           }
           if(typeof res.body?.user_id == 'number'){
-            console.log(`user id: ${res.body?.user_id}`);
             this.userService.setUserId(res.body?.user_id);
           }
           this.router.navigate(['/home'])

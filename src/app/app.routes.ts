@@ -6,6 +6,8 @@ import { authGuard } from './auth/auth.guard';
 import { EasterEggComponent } from './easter-egg/easter-egg.component';
 import { ClassComponent } from './class/class.component';
 import { StudentFormComponent } from './student-form/student-form.component';
+import { EventsPageComponent } from './events/events-page.component';
+import { AttendanceComponent } from './attendance/attendance.component';
 
 export const routes: Routes = [
     {
@@ -35,6 +37,16 @@ export const routes: Routes = [
     {
         path: 'student/:studentId/edit',
         component: StudentFormComponent,
+        canActivate: [authGuard]
+    },
+    {
+        path: 'class/:classId/events',
+        component: EventsPageComponent,
+        canActivate: [authGuard]
+    },
+    {
+        path: 'class/:classId/events/:eventId',
+        component: AttendanceComponent,
         canActivate: [authGuard]
     },
     {

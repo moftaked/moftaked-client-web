@@ -8,9 +8,9 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
   styleUrl: './class-card.component.css'
 })
 export class ClassCardComponent {
-  @Input() classId = '';
+  @Input() classId: number | undefined;
   @Input() name = '';
-  @Output() clickedOnCard = new EventEmitter<string>();
+  @Output() clickedOnCard = new EventEmitter<number>();
 
   onClick() {
     console.log('clicked on the card with classId: ' + this.classId);

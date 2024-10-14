@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { AuthService } from '../auth/auth.service';
 
 export interface Class {
-  class_id: string;
+  class_id: number;
   class_name: string;
 }
 export interface userClassesResultBody {

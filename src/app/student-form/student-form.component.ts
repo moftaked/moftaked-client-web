@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AppHeaderComponent } from "../app-header/app-header.component";
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ErrorMessageComponent } from '../error-message/error-message.component';
-import { deleteResultBody, StudentFormService } from './student-form.service';
+import { StudentFormService } from './student-form.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { SuccessMessageComponent } from '../success-message/success-message.component';
 import { student, StudentService } from '../services/student.service';
@@ -99,6 +99,8 @@ export class StudentFormComponent implements OnInit{
         error: (error: HttpErrorResponse) => {
           if(error.status == 401)
             this.router.navigate(['/login'])
+          else if (error.status == 403)
+            this.router.navigate(['/home'])
         }
       })
       
@@ -150,6 +152,8 @@ export class StudentFormComponent implements OnInit{
             this.errorMessage = 'البيانات اللي انت كتبتها فيها حاجة غلط';
           else if (err.status == 401)
             this.router.navigate(['/login'])
+          else if (err.status == 403)
+            this.router.navigate(['/home'])
           else
             this.errorMessage = 'حصل خطأ غير متوقع من فضلك كلم توني جورج';
         }
@@ -173,7 +177,7 @@ export class StudentFormComponent implements OnInit{
             this.successMessage = 'التعديلات اللي انت عملتها اتسجلت بنجاح';
             this.errorMessage = '';
           }
-          setTimeout(() => {this.successMessage = ''; this.location.back()}, 2000);
+          setTimeout(() => {this.successMessage = ''; this.location.back()}, 500);
         },
 
         error: (err: HttpErrorResponse) => {
@@ -207,11 +211,11 @@ export class StudentFormComponent implements OnInit{
         },
         error: (err: HttpErrorResponse) => {
           if(err.status == 404)
-            this.errorMessage = 'المخدوم ده مش موجود حاليا';
+            this.deleteErrorMessage = 'المخدوم ده مش موجود حاليا';
           else if (err.status == 401)
             this.router.navigate(['/login'])
           else
-            this.errorMessage = 'حصل خطأ غير متوقع من فضلك كلم توني جورج';
+            this.deleteErrorMessage = 'حصل خطأ غير متوقع من فضلك كلم توني جورج';
         },
       })
     }

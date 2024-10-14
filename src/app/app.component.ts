@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { LoginComponent } from "./login/login.component";
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -15,15 +15,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
-export class AppComponent implements OnInit{
+export class AppComponent {
   title = 'moftaked';
-  deferredInstallPrompt: any;
 
-  ngOnInit(): void {
-    window.addEventListener('beforeinstallprompt', (event: any) => {this.deferredInstallPrompt = event; console.log('set install prompt')});
-  }
-
-  installPwa() {
-    this.deferredInstallPrompt.prompt();
-  }
 }

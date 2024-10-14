@@ -6,6 +6,7 @@
     gap: 0.92vh;
 
     width: 93.65vw;
+    max-width: 93.65%;
 }
 
 .delete-button {

@@ -1,14 +1,14 @@
 <app-app-header />
 <div class="body">
     <div id="page-title">
-        @if (mode == 'add') {
+        @if (mode === 'add') {
             مخدوم جديد
         }
-        @if (mode == 'edit') {
+        @if (mode === 'edit') {
             تعديل بيانات: {{student.student_name}}
         }
     </div>
-    @if (mode == 'edit') {
+    @if (mode === 'edit') {
         <button class="delete-button" (click)="onDeleteButtonClick()">
             <svg xmlns="http://www.w3.org/2000/svg" width="4.4vh" height="4.4vh" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
                 <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0"/>
@@ -16,10 +16,10 @@
             {{deleteButtonText}}
         </button>
     }
-    @if (deleteErrorMessage != '') {
+    @if (deleteErrorMessage !== '') {
         <app-error-message [message]="deleteErrorMessage" />
     }
-    @if (deleteSuccessMessage != '') {
+    @if (deleteSuccessMessage !== '') {
         <app-success-message [message]="deleteSuccessMessage" />
     }
     <form [formGroup]="studentForm" (ngSubmit)="onSubmit()">
@@ -47,10 +47,10 @@
             <label for="notes">ملاحظات (اختياري)</label>
             <textarea formControlName="notes" name="notes" rows="3" autocomplete="off"></textarea>
         </div>
-        @if (successMessage != '') {
+        @if (successMessage !== '') {
             <app-success-message [message]="successMessage" />
         }
-        @if (errorMessage != '') {
+        @if (errorMessage !== '') {
             <app-error-message [message]="errorMessage" />
         }
         <button [disabled]="buttonDisabled" type="submit">تمام كدا</button>

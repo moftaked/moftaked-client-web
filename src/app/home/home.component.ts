@@ -35,7 +35,7 @@ export class HomeComponent implements OnInit{
     })
   }
 
-  onCardClick(classId: string) {
+  onCardClick(classId: number) {
     this.router.navigate([`/class/${classId}`]);
   }
 }

@@ -7,6 +7,7 @@ user-select: none;
 
 line-height: 8.5vh;
 width: 94vw;
+max-width: 94%;
 height: 8.5vh;
 
 background: #0F3A57;

@@ -38,7 +38,9 @@ export class LoginComponent {
     معلش حاول تاني`,
     unexpectedError:
     `حصل خطأ غير متوقع
-    من فضلك كلم توني جورج`
+    من فضلك كلم توني جورج`,
+    notFoundError:
+    `المستخدم ده مش موجود على السيستم`
   }
   
   errorMessage = '';
@@ -74,6 +76,8 @@ export class LoginComponent {
             this.errorMessage = this.errorMessages.invalidInput;
           else if (err.status == 401)
             this.errorMessage = this.errorMessages.wrongCredentials;
+          else if (err.status == 404)
+            this.errorMessage = this.errorMessages.notFoundError;
           else if (err.status == 429)
             this.errorMessage = this.errorMessages.tooManyRequests;
           else

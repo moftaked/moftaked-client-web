@@ -30,10 +30,10 @@ export class AuthService {
     window.localStorage.setItem('roles', rolesString);
   }
 
-  getRoles(): [{class_id: number, role: string}] | null {
+  getRoles(): [{class_id: number, role: string}] {
     const rolesString = window.localStorage.getItem('roles');
     if(rolesString == null)
-      return null;
+      return [{class_id: -1, role: 'nothing'}];
     return JSON.parse(rolesString);
   }
 

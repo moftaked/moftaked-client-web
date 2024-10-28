@@ -1,11 +1,3 @@
-#svg-container {
-    z-index: -1;
-    position: fixed;
-    bottom: 0px;
-    width: 22.06vh;
-    height: 18.57vh;
-}
-
 #home-body {
     display: flex;
     flex-direction: column;
@@ -15,6 +7,7 @@
 
     width: 93.66vw;
     height: fit-content;
+    margin-bottom: 9vh;
 }
 
 #first-section {

@@ -4,8 +4,8 @@
     align-items: center;
     padding: 1.84vh 3.17vw;
     gap: 0.92vh;
-
-    width: 93.65vw;
+    width: 93.6%;
+    padding-bottom: calc(3.17vw + 128px);
 }
 
 #class-name {
@@ -20,11 +20,13 @@
 
 #class-controls {
     display: flex;
+    max-width: 600px;
+    flex-wrap: wrap;
     flex-direction: row;
     justify-content: center;
     align-items: center;
     padding: 0.9vh 2.88vw;
-    gap: 2.88vw;
+    gap: 10px;
 }
 
 .button {
@@ -36,13 +38,10 @@
     align-items: center;
     padding: 1.28vh;
     gap: 0.438rem;
-
     width: fit-content;
     height: fit-content;
-
     background: #2692D9;
     border-radius: 5px;
-
     font-family: 'tajawal-bold';
     font-size: 2.2vh;
     line-height: 2.57vh;
@@ -50,46 +49,39 @@
 
 .minimized-table {
     box-sizing: border-box;
-
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
     align-items: center;
     padding: 20px 11px;
     gap: 10px;
-
     height: 57px;
     width: 87.32vw;
     max-width: 600px;
     flex-grow: 1;
-
-    background: rgba(38, 146, 217, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0px 2px 8px -1px rgba(0, 0, 0, 0.25);
+    background: #2692d9cc;
+    border: 1px solid #ffffff33;
+    box-shadow: 0px 2px 8px -1px #00000040;
     border-radius: 10px;
-
     font-family: 'tajawal-bold';
     font-size: 14px;
     line-height: 17px;
     display: flex;
     align-items: center;
-
     color: #F5F5F5;
 }
 
-#table {
+.table {
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 1.83vh 3.17vw;
     gap: 0.92vh;
-
     width: 87.32vw;
     max-width: 600px;
-
-    background: rgba(38, 146, 217, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0px 2px 8px -1px rgba(0, 0, 0, 0.25);
+    background: #2692d9cc;
+    border: 1px solid #ffffff33;
+    box-shadow: 0px 2px 8px -1px #00000040;
     border-radius: 10px;
 }
 
@@ -99,7 +91,7 @@
     user-select: none;
 }
 
-#table-header {
+.table-header {
     display: flex;
     flex-direction: row;
     justify-content: center;
@@ -161,7 +153,6 @@ hr {
     width: 100%;
     flex-grow: 1;
     text-align: center;
-    /* justify-content: center; */
 }
 
 div {

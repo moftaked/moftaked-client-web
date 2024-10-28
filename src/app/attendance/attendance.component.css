@@ -4,9 +4,9 @@
     align-items: center;
     padding: 1.84vh 3.17vw;
     gap: 0.92vh;
-
     width: 93.65vw;
     user-select: none;
+    padding-bottom: calc(3.17vw + 128px);
 }
 
 .person {
@@ -76,7 +76,7 @@
 
 #save-button {
     position: sticky;
-    bottom: 5vw;
+    bottom: calc(2vh + 64px);
     left: 5vw;
     padding: 1.83vh 3.17vw;
     font-size: 1.5rem;

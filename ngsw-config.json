@@ -1,6 +1,9 @@
 {
   "$schema": "./node_modules/@angular/service-worker/config/schema.json",
   "index": "/index.html",
+  "appData": {
+    "version": "0.2.0"
+  },
   "assetGroups": [
     {
       "name": "app",
@@ -23,6 +26,32 @@
         "files": [
           "/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
         ]
+      }
+    }
+  ],
+
+  "dataGroups": [
+    {
+      "name": "classes",
+      "urls": [
+        "users/*/classes"
+      ],
+      "cacheConfig": {
+        "maxSize": 1,
+        "maxAge": "14d",
+        "timeout": "5s"
+      }
+    },
+    {
+      "name": "class details",
+      "urls": [
+        "classes/*"
+      ],
+      "cacheConfig": {
+        "maxSize": 100,
+        "maxAge": "14d",
+        "timeout": "5s",
+        "strategy": "freshness"
       }
     }
   ]

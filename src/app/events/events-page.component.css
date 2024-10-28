@@ -1,11 +1,3 @@
-#svg-container {
-    z-index: -1;
-    position: fixed;
-    bottom: 0px;
-    width: 22.06vh;
-    height: 18.57vh;
-}
-
 #home-body {
     display: flex;
     flex-direction: column;
@@ -15,6 +7,7 @@
 
     width: 93.66vw;
     height: fit-content;
+    padding-bottom: calc(3.17vw + 128px);
 }
 
 .section {
@@ -28,14 +21,14 @@
     height: 163px;
 }
 
-#section-title {
+.section-title {
     width: 100%;
     direction: rtl;
     font-family: 'tajawal-bold';
     font-size: 16px;
 }
 
-#section-body {
+.section-body {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -48,18 +41,13 @@ app-class-card {
 }
 
 hr {
-    /* Line 6 */
-
 width: 80%;
 height: 0px;
 margin: 0px;
 border: 1px solid rgba(93, 150, 187, 0.8);
 box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.25);
 border-radius: 1px;
-
-/* Inside auto layout */
 flex: none;
 order: 0;
 flex-grow: 0;
-
 }

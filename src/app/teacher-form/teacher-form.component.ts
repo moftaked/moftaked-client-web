@@ -3,16 +3,16 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AppHeaderComponent } from "../app-header/app-header.component";
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ErrorMessageComponent } from '../error-message/error-message.component';
-import { StudentFormService } from './student-form.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { SuccessMessageComponent } from '../success-message/success-message.component';
-import { student, StudentService } from '../services/student.service';
 import { Location } from '@angular/common';
+import { teacher, TeachersService } from '../services/teachers.service';
+import { TeacherFormService } from './teacher-form.service';
 import { AuthService } from '../auth/auth.service';
 import { NavMenuComponent } from "../nav-menu/nav-menu.component";
 
 @Component({
-  selector: 'app-student-form',
+  selector: 'app-teacher-form',
   standalone: true,
   imports: [
     AppHeaderComponent,
@@ -21,30 +21,30 @@ import { NavMenuComponent } from "../nav-menu/nav-menu.component";
     SuccessMessageComponent,
     NavMenuComponent
 ],
-  templateUrl: './student-form.component.html',
-  styleUrl: './student-form.component.css'
+  templateUrl: './teacher-form.component.html',
+  styleUrl: './teacher-form.component.css'
 })
-export class StudentFormComponent implements OnInit{
+export class TeacherFormComponent implements OnInit{
   classId: string | null | undefined;
-  studentId: string | null | undefined;
+  teacherId: string | null | undefined;
   mode: 'edit' | 'add' = 'add';
   errorMessage = '';
   successMessage = '';
-  deleteButtonText: 'امسح المخدوم' | 'متأكد؟ اتكى تاني' = 'امسح المخدوم'
+  deleteButtonText: 'امسح الخادم' | 'متأكد؟ اتكى تاني' = 'امسح الخادم'
   deleteErrorMessage = '';
   deleteSuccessMessage = '';
   deleteButtonClicksCount = 0;
   buttonDisabled = false;
-  student: student = {
-    student_id: 0,
-    student_name: '',
+  teacher: teacher = {
+    teacher_id: 0,
+    teacher_name: '',
     address: '',
     phone_numbers: '',
     district: '',
     notes: ''
   };
-  studentForm = new FormGroup({
-    student_name: new FormControl('', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]),
+  teacherForm = new FormGroup({
+    teacher_name: new FormControl('', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]),
     address: new FormControl('', [Validators.required, Validators.minLength(4), Validators.maxLength(1000)]),
     district: new FormControl('', [Validators.required, Validators.minLength(1), Validators.maxLength(50)]),
     phone_number: new FormControl('', [Validators.required, Validators.pattern(/^[0-9]+$/), Validators.minLength(7), Validators.maxLength(15)]),
@@ -54,24 +54,24 @@ export class StudentFormComponent implements OnInit{
 
   constructor(
     private route: ActivatedRoute, 
-    private studentFormService: StudentFormService,
+    private teacherFormService: TeacherFormService,
     private router: Router,
-    private studentService: StudentService,
+    private teacherService: TeachersService,
     private location: Location,
     private authService: AuthService
   ) {}
 
   ngOnInit(): void {
     this.classId = this.route.snapshot.paramMap.get('classId');
-    this.studentId = this.route.snapshot.paramMap.get('studentId');
+    this.teacherId = this.route.snapshot.paramMap.get('teacherId');
     console.log(`classId: ${this.classId}`)
-    console.log(`studentId: ${this.studentId}`)
+    console.log(`teacherId: ${this.teacherId}`)
     console.log(`mode was: ${this.mode}`)
     if(this.classId != null){
       this.mode = 'add'
       console.log('mode set to add')
     }
-    else if(this.studentId != null){
+    else if(this.teacherId != null){
       this.mode = 'edit'
       console.log('mode set to edit')
 
@@ -79,22 +79,22 @@ export class StudentFormComponent implements OnInit{
     console.log(`mode: ${this.mode}`)
 
     if(this.mode == 'edit') {
-      const observable = this.studentService.getStudent(this.studentId);
+      const observable = this.teacherService.getTeacher(this.teacherId);
       observable.subscribe({
         next: (res) => {
           console.log(res);
           if(res.body != undefined){
-            this.student = res.body.students[0]
-            const controls = this.studentForm.controls;
-            controls.student_name.setValue(this.student.student_name);
-            console.log(this.student)
-            console.log(`current editing student name: ${this.student.student_name}`)
-            console.log(`current student name fromcontrol value: ${controls.student_name.value}`)
-            controls.address.setValue(this.student.address);
-            controls.district.setValue(this.student.district);
-            if(this.student.notes)
-              controls.notes.setValue(this.student.notes);
-            const phoneNumbers = this.student.phone_numbers.split(', ');
+            this.teacher = res.body.teachers[0]
+            const controls = this.teacherForm.controls;
+            controls.teacher_name.setValue(this.teacher.teacher_name);
+            console.log(this.teacher)
+            console.log(`current editing student name: ${this.teacher.teacher_name}`)
+            console.log(`current student name fromcontrol value: ${controls.teacher_name.value}`)
+            controls.address.setValue(this.teacher.address);
+            controls.district.setValue(this.teacher.district);
+            if(this.teacher.notes)
+              controls.notes.setValue(this.teacher.notes);
+            const phoneNumbers = this.teacher.phone_numbers.split(', ');
             controls.phone_number.setValue(phoneNumbers[0]);
             if(phoneNumbers[1])
               controls.second_phone_number.setValue(phoneNumbers[1]);
@@ -114,10 +114,10 @@ export class StudentFormComponent implements OnInit{
   }
 
   onSubmit() {
-    const controls = this.studentForm.controls;
-    if(this.studentForm.valid == false) {
-      if(controls.student_name.errors != null)
-        this.errorMessage = 'اكتب اسم المخدوم';
+    const controls = this.teacherForm.controls;
+    if(this.teacherForm.valid == false) {
+      if(controls.teacher_name.errors != null)
+        this.errorMessage = 'اكتب اسم الخادم';
       else if(controls.address.errors != null)
         this.errorMessage = 'اكتب العنوان';
       else if(controls.district.errors != null)
@@ -132,20 +132,20 @@ export class StudentFormComponent implements OnInit{
 
     else if(this.mode == 'add'){
       this.buttonDisabled = true;
-      const observable = this.studentFormService.createStudent(
-        this.studentForm.value.student_name, 
-        this.studentForm.value.address, 
-        this.studentForm.value.phone_number, 
-        this.studentForm.value.second_phone_number, 
-        this.studentForm.value.district,
-        this.studentForm.value.notes,
+      const observable = this.teacherFormService.createTeacher(
+        this.teacherForm.value.teacher_name, 
+        this.teacherForm.value.address, 
+        this.teacherForm.value.phone_number, 
+        this.teacherForm.value.second_phone_number, 
+        this.teacherForm.value.district,
+        this.teacherForm.value.notes,
         this.classId
       );
       observable.subscribe({
         next: (res) => {
           if (res.status == 201){
             this.buttonDisabled = false;
-            this.studentForm.reset();
+            this.teacherForm.reset();
             this.successMessage = 'البيانات اللي انت كتبتها اتسجلت بنجاح';
             this.errorMessage = '';
           }
@@ -156,7 +156,7 @@ export class StudentFormComponent implements OnInit{
           this.buttonDisabled = false;
           if(err.status == 400)
             this.errorMessage = 'البيانات اللي انت كتبتها فيها حاجة غلط';
-          if(err.status == 401){
+          else if(err.status == 401){
             this.authService.markTokenInvalid();
             this.router.navigate(['/login'])
           }
@@ -169,14 +169,14 @@ export class StudentFormComponent implements OnInit{
     }
     else if(this.mode == 'edit'){
       this.buttonDisabled = true;
-      const observable = this.studentFormService.updateStudent(
-        this.studentId,
-        this.studentForm.value.student_name, 
-        this.studentForm.value.address, 
-        this.studentForm.value.phone_number, 
-        this.studentForm.value.second_phone_number, 
-        this.studentForm.value.district,
-        this.studentForm.value.notes,
+      const observable = this.teacherFormService.updateTeacher(
+        this.teacherId,
+        this.teacherForm.value.teacher_name, 
+        this.teacherForm.value.address, 
+        this.teacherForm.value.phone_number, 
+        this.teacherForm.value.second_phone_number, 
+        this.teacherForm.value.district,
+        this.teacherForm.value.notes,
       );
       observable.subscribe({
         next: (res) => {
@@ -192,7 +192,7 @@ export class StudentFormComponent implements OnInit{
           this.buttonDisabled = false;
           if(err.status == 400)
             this.errorMessage = 'البيانات اللي انت كتبتها فيها حاجة غلط';
-          if(err.status == 401){
+          else if(err.status == 401){
             this.authService.markTokenInvalid();
             this.router.navigate(['/login'])
           }
@@ -208,12 +208,12 @@ export class StudentFormComponent implements OnInit{
     if(this.deleteButtonClicksCount == 1){
       this.deleteButtonText = 'متأكد؟ اتكى تاني';
     }
-    else if(this.studentId && this.deleteButtonClicksCount > 1){
-      const observable = this.studentFormService.deleteStudent(this.studentId);
+    else if(this.teacherId && this.deleteButtonClicksCount > 1){
+      const observable = this.teacherFormService.deleteTeacher(this.teacherId);
       observable.subscribe({
         next: (res) => {
           if(res.body?.affectedRows){
-            this.deleteSuccessMessage = 'المخدوم اتمسح بنجاح';
+            this.deleteSuccessMessage = 'الخادم اتمسح بنجاح';
             setTimeout(() => {this.deleteSuccessMessage = ''; this.location.back()}, 2000);
           }
           else
@@ -221,8 +221,8 @@ export class StudentFormComponent implements OnInit{
         },
         error: (err: HttpErrorResponse) => {
           if(err.status == 404)
-            this.deleteErrorMessage = 'المخدوم ده مش موجود حاليا';
-          if(err.status == 401){
+            this.deleteErrorMessage = 'الخادم ده مش موجود حاليا';
+          else if(err.status == 401){
             this.authService.markTokenInvalid();
             this.router.navigate(['/login'])
           }

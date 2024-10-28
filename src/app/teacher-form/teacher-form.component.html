@@ -2,10 +2,10 @@
 <div class="body">
     <div id="page-title">
         @if (mode === 'add') {
-            مخدوم جديد
+            خادم جديد
         }
         @if (mode === 'edit') {
-            تعديل بيانات: {{student.student_name}}
+            تعديل بيانات: {{teacher.teacher_name}}
         }
     </div>
     @if (mode === 'edit') {
@@ -22,10 +22,10 @@
     @if (deleteSuccessMessage !== '') {
         <app-success-message [message]="deleteSuccessMessage" />
     }
-    <form [formGroup]="studentForm" (ngSubmit)="onSubmit()">
+    <form [formGroup]="teacherForm" (ngSubmit)="onSubmit()">
         <div class="form-control">
             <label for="name">الاسم</label>
-            <input type="text" formControlName="student_name" name="name" autocomplete="off"/>
+            <input type="text" formControlName="teacher_name" name="name" autocomplete="off"/>
         </div>
         <div class="form-control">
             <label for="address">العنوان</label>

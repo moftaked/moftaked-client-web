@@ -8,6 +8,10 @@ import { ClassComponent } from './class/class.component';
 import { StudentFormComponent } from './student-form/student-form.component';
 import { EventsPageComponent } from './events/events-page.component';
 import { AttendanceComponent } from './attendance/attendance.component';
+import { TeacherFormComponent } from './teacher-form/teacher-form.component';
+import { EventsHomeComponent } from './events-home/events-home.component';
+import { ReportComponent } from './report/report.component';
+import { EventReportComponent } from './event-report/event-report.component';
 
 export const routes: Routes = [
     {
@@ -25,13 +29,23 @@ export const routes: Routes = [
         canActivate: [authGuard]
     },
     {
+        path: 'attendance',
+        component: EventsHomeComponent,
+        canActivate: [authGuard]
+    },
+    {
         path: 'class/:id',
         component: ClassComponent,
         canActivate: [authGuard]
     },
     {
-        path: 'class/:classId/add',
+        path: 'class/:classId/students/add',
         component: StudentFormComponent,
+        canActivate: [authGuard]
+    },
+    {
+        path: 'class/:classId/teachers/add',
+        component: TeacherFormComponent,
         canActivate: [authGuard]
     },
     {
@@ -40,13 +54,33 @@ export const routes: Routes = [
         canActivate: [authGuard]
     },
     {
+        path: 'teacher/:teacherId/edit',
+        component: TeacherFormComponent,
+        canActivate: [authGuard]
+    },
+    {
         path: 'class/:classId/events',
         component: EventsPageComponent,
         canActivate: [authGuard]
     },
     {
-        path: 'class/:classId/events/:eventId',
+        path: 'class/:classId/events/:eventId/students',
         component: AttendanceComponent,
+        canActivate: [authGuard]
+    },
+    {
+        path: 'class/:classId/events/:eventId/teachers',
+        component: AttendanceComponent,
+        canActivate: [authGuard]
+    },
+    {
+        path: 'report',
+        component: ReportComponent,
+        canActivate: [authGuard]
+    },
+    {
+        path: 'report/:schoolId/:eventName/:type/:date',
+        component: EventReportComponent,
         canActivate: [authGuard]
     },
     {

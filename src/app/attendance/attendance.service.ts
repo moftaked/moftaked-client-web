@@ -9,7 +9,7 @@ export interface attendance {
   attended: 0 | 1;
 }
 
-export interface studentAttendanceRes {
+export interface attendanceRes {
   attendance: attendance[]
   date: [{
     occurence_date: string
@@ -37,8 +37,19 @@ export class AttendanceService {
       });
   }
 
+  getTeachersEventName(classId: number, eventId: number) {
+    return this.http.get<eventsResultBody>(
+      `classes/${classId}/teachers/events/${eventId}`, 
+      {
+        observe: 'response',
+        headers: {
+          'Authorization': this.authService.getAuthorizationHeader()
+        }
+      });
+  }
+
   getStudentAttendees(classId: number, eventId: number) {
-    return this.http.get<studentAttendanceRes>(
+    return this.http.get<attendanceRes>(
       `classes/${classId}/students/events/${eventId}/attendance`,
       {
         observe: 'response',
@@ -49,7 +60,19 @@ export class AttendanceService {
     );
   }
 
-  createEventOccurence(classId: number, eventId: number) {
+  getTeachersAttendees(classId: number, eventId: number) {
+    return this.http.get<attendanceRes>(
+      `classes/${classId}/teachers/events/${eventId}/attendance`,
+      {
+        observe: 'response',
+        headers: {
+          'Authorization': this.authService.getAuthorizationHeader()
+        }
+      }
+    );
+  }
+
+  createStudentEventOccurence(classId: number, eventId: number) {
     return this.http.post(
       `classes/${classId}/students/events/${eventId}/occurences`,
       null,
@@ -62,13 +85,43 @@ export class AttendanceService {
     )
   }
 
-  createAttendance(
+  createTeacherEventOccurence(classId: number, eventId: number) {
+    return this.http.post(
+      `classes/${classId}/teachers/events/${eventId}/occurences`,
+      null,
+      {
+        observe: 'response',
+        headers: {
+          'Authorization': this.authService.getAuthorizationHeader()
+        }
+      }
+    )
+  }
+
+  createStudentAttendance(
     classId: number, 
     eventId: number, 
     attendance: {attendance: number[], absence: number[]},
   ) {
     return this.http.post(
       `classes/${classId}/students/events/${eventId}/attendance`,
+      attendance,
+      {
+        observe: 'response',
+        headers: {
+          'Authorization': this.authService.getAuthorizationHeader()
+        }
+      }
+    )
+  }
+
+  createTeacherAttendance(
+    classId: number, 
+    eventId: number, 
+    attendance: {attendance: number[], absence: number[]},
+  ) {
+    return this.http.post(
+      `classes/${classId}/teachers/events/${eventId}/attendance`,
       attendance,
       {
         observe: 'response',

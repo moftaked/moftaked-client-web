@@ -1,0 +1,17 @@
+<div>
+    <app-app-header />
+    <div id="home-body">
+        <div id="first-section">
+            <div id="section-title">
+                الخدمات بتاعتك
+            </div>
+            <div id="section-body">
+                @for (group of classes; track group.class_id) {
+                    <app-class-card [classId]="group.class_id" [name]="group.class_name" (clickedOnCard)="onCardClick($event)"/>
+                }
+                <hr>
+            </div>
+        </div>
+    </div>
+    <app-nav-menu />
+</div>

@@ -6,11 +6,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { attendance, AttendanceService } from './attendance.service';
 import { ErrorMessageComponent } from '../error-message/error-message.component';
 import { AuthService } from '../auth/auth.service';
+import { NavMenuComponent } from "../nav-menu/nav-menu.component";
 
 @Component({
   selector: 'app-attendance',
   standalone: true,
-  imports: [AppHeaderComponent, ErrorMessageComponent],
+  imports: [AppHeaderComponent, ErrorMessageComponent, NavMenuComponent],
   templateUrl: './attendance.component.html',
   styleUrl: './attendance.component.css'
 })
@@ -23,9 +24,11 @@ export class AttendanceComponent implements OnInit{
   attended = new Set<number>();
   absent = new Set<number>();
   isLeader = false;
+  isAdmin = false;
   date: Date | undefined;
   errorMessage = '';
   attendanceFlushSuccess = false;
+  type: 'students' | 'teachers' | undefined;
   constructor(
     private classService: ClassService, 
     private attendanceService: AttendanceService,
@@ -35,9 +38,16 @@ export class AttendanceComponent implements OnInit{
   ) {}
 
   ngOnInit(): void {
+    const url = this.route.snapshot.url;
     this.classId = Number(this.route.snapshot.paramMap.get('classId'));
     this.eventId = Number(this.route.snapshot.paramMap.get('eventId'));
-    this.isLeader = this.authService.getRoles()?.some((role) => {console.log('role class id:', role.class_id, 'opened class id: ', this.classId, 'role', role.role); return (role.class_id == this.classId) && ((role.role == 'leader') || (role.role == 'manager'))}) || false;
+    this.isLeader = this.authService.getRoles()?.some((role) => {return (role.class_id == this.classId) && ((role.role == 'leader') || (role.role == 'manager'))}) || false;
+    this.isAdmin = this.authService.getRoles()?.some((role) => {return (role.class_id == this.classId) && ((role.role == 'manager'))}) || false;
+    if(url[url.length-1]?.toString() === 'teachers')
+      this.type = 'teachers';
+    else if(url[url.length-1]?.toString() === 'students')
+      this.type = 'students';
+    console.log(this.type)
     const classObservable = this.classService.getClassName(this.classId);
     classObservable.subscribe({
       next: (res) => {
@@ -45,45 +55,84 @@ export class AttendanceComponent implements OnInit{
           this.className = res.body[0].class_name;
       },
       error: (err: HttpErrorResponse) => {
-        if(err.status == 401)
+        if(err.status == 401){
+          this.authService.markTokenInvalid();
           this.router.navigate(['/login'])
+        }
       }
     });
 
-    const eventObservable = this.attendanceService.getStudentsEventName(this.classId, this.eventId);
-    eventObservable.subscribe({
-      next: (res) => {
-        if(res.body)
-          this.eventName = res.body.events[0].event_name;
-      }
-    })
+    if(this.type == 'students'){
+      const eventObservable = this.attendanceService.getStudentsEventName(this.classId, this.eventId);
+      eventObservable.subscribe({
+        next: (res) => {
+          if(res.body)
+            this.eventName = res.body.events[0].event_name;
+        }
+      })
+    } else if(this.type == 'teachers'){
+      const eventObservable = this.attendanceService.getTeachersEventName(this.classId, this.eventId);
+      eventObservable.subscribe({
+        next: (res) => {
+          if(res.body)
+            this.eventName = res.body.events[0].event_name;
+        }
+      })
+    }
 
     this.getAttendance();
   }
 
   getAttendance() {
-    const attendanceObservable = this.attendanceService.getStudentAttendees(this.classId, this.eventId);
-    attendanceObservable.subscribe({
-      next: (res) => {
-        if(res.body){
-          this.attendance = res.body.attendance;
-          this.date = new Date(Date.parse(res.body.date[0].occurence_date))
-          console.log(res.body)
+    if(this.type == 'students') {
+      const attendanceObservable = this.attendanceService.getStudentAttendees(this.classId, this.eventId);
+      attendanceObservable.subscribe({
+        next: (res) => {
+          if(res.body){
+            this.attendance = res.body.attendance;
+            this.date = new Date(Date.parse(res.body.date[0].occurence_date))
+            console.log(res.body)
+          }
+        },
+        error: (err: HttpErrorResponse) => {
+          if(err.status == 404){
+            if(this.type == 'students') this.errorMessage = 'الخدمة دي لسة متضافلهاش ايام غياب، لازم الليدر او أمين الخدمة يعمل اضافة يوم عشان تبدأ تاخد غياب انهاردة';
+            if(this.type == 'teachers') this.errorMessage =  'الخدمة دي لسة متضافلهاش ايام غياب، لازم أمين الخدمة يعمل اضافة يوم عشان تبدأ تاخد غياب انهاردة';
+          }
         }
-      },
-      error: (err: HttpErrorResponse) => {
-        if(err.status == 404)
-          this.errorMessage = 'الخدمة دي لسة متضافلهاش ايام غياب، لازم الليدر او أمين الخدمة يعمل اضافة يوم عشان تبدأ تاخد غياب انهاردة';
-      }
-    });
+      });
+    } else if(this.type == 'teachers') {
+      const attendanceObservable = this.attendanceService.getTeachersAttendees(this.classId, this.eventId);
+      attendanceObservable.subscribe({
+        next: (res) => {
+          if(res.body){
+            this.attendance = res.body.attendance;
+            this.date = new Date(Date.parse(res.body.date[0].occurence_date))
+            console.log(res.body)
+          }
+        },
+        error: (err: HttpErrorResponse) => {
+          if(err.status == 404)
+            this.errorMessage = 'الخدمة دي لسة متضافلهاش ايام غياب، لازم الليدر او أمين الخدمة يعمل اضافة يوم عشان تبدأ تاخد غياب انهاردة';
+        }
+      });
+    }
   }
 
   onAddDayClick() {
-    const observable = this.attendanceService.createEventOccurence(this.classId, this.eventId);
-    observable.subscribe(() => {
-      this.errorMessage = ''
-      this.getAttendance()
-    })
+    if(this.type == 'students') {
+      const observable = this.attendanceService.createStudentEventOccurence(this.classId, this.eventId);
+      observable.subscribe(() => {
+        this.errorMessage = ''
+        this.getAttendance()
+      })
+    } else if(this.type == 'teachers') {
+      const observable = this.attendanceService.createTeacherEventOccurence(this.classId, this.eventId);
+      observable.subscribe(() => {
+        this.errorMessage = ''
+        this.getAttendance()
+      })
+    }
   }
 
   convertToArabicDayName(dayOfWeek: number) {
@@ -119,12 +168,21 @@ export class AttendanceComponent implements OnInit{
     this.absent.clear();
     if(attendance.attendance.length +  attendance.absence.length > 0){
       console.log(attendance.attendance, attendance.absence);
-      this.attendanceService.createAttendance(this.classId, this.eventId, attendance).subscribe(
-        () => {
-          this.attendanceFlushSuccess = true;
-          setTimeout(() => {this.attendanceFlushSuccess = false}, 5000);
-        }
-      );
+      if(this.type == 'students') {
+        this.attendanceService.createStudentAttendance(this.classId, this.eventId, attendance).subscribe(
+          () => {
+            this.attendanceFlushSuccess = true;
+            setTimeout(() => {this.attendanceFlushSuccess = false}, 5000);
+          }
+        );
+      } else if(this.type == 'teachers') {
+        this.attendanceService.createTeacherAttendance(this.classId, this.eventId, attendance).subscribe(
+          () => {
+            this.attendanceFlushSuccess = true;
+            setTimeout(() => {this.attendanceFlushSuccess = false}, 5000);
+          }
+        );
+      }
 
     }
 

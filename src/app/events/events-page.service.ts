@@ -23,4 +23,15 @@ export class EventsPageService {
         }
       });
   }
+
+  getTeachersServices(classId: string) {
+    return this.http.get<eventsResultBody>(
+      `classes/${classId}/teachers/events`, 
+      {
+        observe: 'response',
+        headers: {
+          'Authorization': this.authService.getAuthorizationHeader()
+        }
+      });
+  }
 }

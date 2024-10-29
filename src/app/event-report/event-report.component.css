@@ -1,0 +1,36 @@
+#page-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.84vh 3.17vw;
+    gap: 0.92vh;
+    width: 93.6%;
+    padding-bottom: calc(3.17vw + 128px);
+}
+
+.header {
+    user-select: none;
+    font-family: 'tajawal-bold';
+    font-size: 2.94vh;
+    line-height: 3.49vh;
+    height: 3.49vh;
+    display: flex;
+    align-items: center;
+}
+
+.h-section {
+    border-radius: 10px;
+    padding: 1.28vh;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    max-width: 100vw;
+}
+
+.v-section {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    font-size: 1.3rem;
+    width: fit-content;
+}

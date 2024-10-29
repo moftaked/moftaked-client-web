@@ -76,7 +76,7 @@
 
 #save-button {
     position: sticky;
-    bottom: calc(2vh + 64px);
+    bottom: calc(2vh + 100px);
     left: 5vw;
     padding: 1.83vh 3.17vw;
     font-size: 1.5rem;

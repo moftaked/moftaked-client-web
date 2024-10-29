@@ -7,7 +7,8 @@ export interface overAllStat {
   attended: number; 
   total: number;
 }
-export interface overAllStatsResultBody {
+
+export interface managerOverAllStatsResultBody {
   overAllStats: [
     {
       school_id: number,
@@ -18,7 +19,21 @@ export interface overAllStatsResultBody {
       }]
     }
   ]
-  
+}
+
+export interface classOverAllStatsResultBody {
+  overAllStats: [
+    {
+      class_id: number,
+      class_name: string,
+      stats: [{
+        event_name: string,
+        type: string,
+        attended: number,
+        total: number
+      }]
+    }
+  ]
 }
 
 @Injectable({
@@ -28,9 +43,31 @@ export class ReportService {
 
   constructor(private http: HttpClient, private authService: AuthService) { }
 
-  getOverAllStats(account_id: string | null, date: string) {
-    return this.http.get<overAllStatsResultBody>(
+  getManagarialOverAllStats(account_id: string | null, date: string) {
+    return this.http.get<managerOverAllStatsResultBody>(
       `/schools/managers/${account_id}/reports?date=${date}`, 
+      {
+        observe: 'response',
+        headers: {
+          'Authorization': this.authService.getAuthorizationHeader()
+        }
+      });
+  }
+
+  getLeaderOverAllStats(account_id: string | null, date: string) {
+    return this.http.get<classOverAllStatsResultBody>(
+      `/schools/leaders/${account_id}/reports?date=${date}`, 
+      {
+        observe: 'response',
+        headers: {
+          'Authorization': this.authService.getAuthorizationHeader()
+        }
+      });
+  }
+
+  getTeacherOverAllStats(account_id: string | null, date: string) {
+    return this.http.get<classOverAllStatsResultBody>(
+      `/schools/teachers/${account_id}/reports?date=${date}`, 
       {
         observe: 'response',
         headers: {

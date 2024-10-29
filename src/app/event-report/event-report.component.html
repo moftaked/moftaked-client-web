@@ -1,0 +1,47 @@
+<app-app-header />
+<div id="page-body">
+    <div class="header">{{eventName}}</div>
+    <div class="header">{{eventType === 'student'? 'المخدومين' : 'الخدام'}}</div>
+    <div class="header">تقرير يوم: {{date}}</div>
+
+    @if(attendance.length > 1) {
+        <svg viewBox="0 0 230 135" style="max-width: 410px; max-height: 234.78px" width="90vw" height="45vw" xmlns="http://www.w3.org/2000/svg">
+            @for(portion of [100, 75, 50, 25, 0]; track $index) {
+                <line x1="12" x2="212" [attr.y1]="portion+1" [attr.y2]="portion+1" stroke="#F5F5F5" stroke-linecap="round"></line>
+            }
+            <polyline [attr.points]="polyLinePoints" fill="none" stroke="#0F3A57" stroke-linecap="round" stroke-width="2" stroke-linejoin="round"/>
+            @for(record of attendance; track record.occurence_date; let index = $index) {
+                <text [attr.x]="((attendance.length-index-1)/(attendance.length-1))*200+12" y="117" text-anchor="middle" fill="#F5F5F5" font-size="12px" font-family="tajawal-regular">{{record.occurence_date}}</text>
+            }
+            <text x="50%" y="129" text-anchor="middle" fill="#F5F5F5" font-size="12px" font-family="tajawal-bold">النسبة المئوية لعدد الحاضرين</text>
+        </svg>
+    }
+    <div class="h-section">
+        @for(reocrd of attendance; track $index; let index = $index) {
+            @if(index < 2){
+                <div class="v-section">
+                    <svg viewBox="0 0 36 36" style="max-height: 200px; max-width: 200px;" width="40vw" height="40vw">
+                        <circle cx="18" cy="18" r="16" fill="none" stroke="#ddd" stroke-width="2" />
+                        <circle
+                        cx="18"
+                        cy="18"
+                        r="16"
+                        fill="none"
+                        stroke="#0F3A57"
+                        stroke-width="2"
+                        stroke-dasharray="100"
+                        stroke-linecap="round"
+                        style="transform-origin: 50%; transform: rotate(-90deg);"
+                        [attr.stroke-dashoffset]="100-(attendance[index].attended*100/attendance[index].total || 0)"
+                        />
+                        <text x="50%" y="56.21%" text-anchor="middle" fill="#F5F5F5" font-size="0.5rem" font-family="tajawal-bold">{{ attendance[index].attended + ' / '+ attendance[index].total }}</text>
+                        <text x="50%" y="76.626%" text-anchor="middle" fill="#F5F5F5" font-size="0.35rem" font-family="tajawal-regular">{{ math.floor(attendance[index].attended*100/attendance[index].total || 0)+'%' }}</text>
+                    </svg>
+                    <p>الحضور يوم {{attendance[index].occurence_date}}</p>
+                </div>
+            }
+        }
+    </div>
+
+</div>
+<app-nav-menu />

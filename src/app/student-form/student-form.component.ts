@@ -25,6 +25,7 @@ import { NavMenuComponent } from "../nav-menu/nav-menu.component";
   styleUrl: './student-form.component.css'
 })
 export class StudentFormComponent implements OnInit{
+  loading = false;
   classId: string | null | undefined;
   studentId: string | null | undefined;
   mode: 'edit' | 'add' = 'add';
@@ -141,8 +142,10 @@ export class StudentFormComponent implements OnInit{
         this.studentForm.value.notes,
         this.classId
       );
+      this.loading = true;
       observable.subscribe({
         next: (res) => {
+          this.loading = false;
           if (res.status == 201){
             this.buttonDisabled = false;
             this.studentForm.reset();
@@ -153,6 +156,7 @@ export class StudentFormComponent implements OnInit{
         },
 
         error: (err: HttpErrorResponse) => {
+          this.loading = false;
           this.buttonDisabled = false;
           if(err.status == 400)
             this.errorMessage = 'البيانات اللي انت كتبتها فيها حاجة غلط';

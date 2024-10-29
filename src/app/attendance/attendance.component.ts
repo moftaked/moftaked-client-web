@@ -16,6 +16,7 @@ import { NavMenuComponent } from "../nav-menu/nav-menu.component";
   styleUrl: './attendance.component.css'
 })
 export class AttendanceComponent implements OnInit{
+  loading = false;
   classId = -1;
   className = '';
   eventId = -1;
@@ -167,17 +168,20 @@ export class AttendanceComponent implements OnInit{
     this.absent.forEach((personId) => {attendance.absence.push(personId)});
     this.absent.clear();
     if(attendance.attendance.length +  attendance.absence.length > 0){
-      console.log(attendance.attendance, attendance.absence);
       if(this.type == 'students') {
+        this.loading = true;
         this.attendanceService.createStudentAttendance(this.classId, this.eventId, attendance).subscribe(
           () => {
+            this.loading = false;
             this.attendanceFlushSuccess = true;
             setTimeout(() => {this.attendanceFlushSuccess = false}, 5000);
           }
         );
       } else if(this.type == 'teachers') {
+        this.loading = true;
         this.attendanceService.createTeacherAttendance(this.classId, this.eventId, attendance).subscribe(
           () => {
+            this.loading = false;
             this.attendanceFlushSuccess = true;
             setTimeout(() => {this.attendanceFlushSuccess = false}, 5000);
           }

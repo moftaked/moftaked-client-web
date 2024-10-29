@@ -79,7 +79,12 @@ export const routes: Routes = [
         canActivate: [authGuard]
     },
     {
-        path: 'report/:schoolId/:eventName/:type/:date',
+        path: 'report/manager/:schoolId/:eventName/:type/:date',
+        component: EventReportComponent,
+        canActivate: [authGuard]
+    },
+    {
+        path: 'report/class/:classId/:eventName/:type/:date',
         component: EventReportComponent,
         canActivate: [authGuard]
     },

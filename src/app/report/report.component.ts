@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { AppHeaderComponent } from "../app-header/app-header.component";
 import { NavMenuComponent } from "../nav-menu/nav-menu.component";
-import { overAllStatsResultBody, ReportService } from './report.service';
+import { classOverAllStatsResultBody, managerOverAllStatsResultBody, ReportService } from './report.service';
 import { UserService } from '../services/user.service';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -14,16 +14,19 @@ import { Router } from '@angular/router';
   styleUrl: './report.component.css'
 })
 export class ReportComponent implements OnInit{
-  overAllStats: overAllStatsResultBody | undefined = undefined;
-  progress = 0;
+  loading = false;
+  managarialOverAllStats: managerOverAllStatsResultBody | undefined = undefined;  
+  leaderOverAllStats: classOverAllStatsResultBody | undefined = undefined;
+  teacherOverAllStats: classOverAllStatsResultBody | undefined = undefined;
   math = Math
   years: number[] = [];
   months: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   days: number[] = [];
   today = new Date(); 
   selectedYear: number = this.today.getFullYear();
-  selectedMonth: number = this.months[this.today.getMonth()];
+  selectedMonth: number = this.today.getMonth() + 1;
   selectedDay: number = this.today.getDate();
+  selectedDate = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
 
   constructor(
     private reportService: ReportService, 
@@ -39,26 +42,45 @@ export class ReportComponent implements OnInit{
   }
   
   updateDays() {
-    const daysInMonth = new Date(this.selectedYear, this.months.indexOf(this.selectedMonth) + 1, 0).getDate();
+    const daysInMonth = new Date(this.selectedYear, this.selectedMonth, 0).getDate();
     this.days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-    console.log(this.days);
   }
 
   getReports() {
-    const selectedDate = `${this.selectedYear}-${this.months.indexOf(this.selectedMonth) + 1}-${this.selectedDay}`;
-    const overAllStatsObservable = this.reportService.getOverAllStats(this.userService.getUserId(), selectedDate);
-    overAllStatsObservable.subscribe({
+    this.loading = true;
+    this.selectedDate = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
+    const managerOverAllStatsObservable = this.reportService.getManagarialOverAllStats(this.userService.getUserId(), this.selectedDate);
+    managerOverAllStatsObservable.subscribe({
       next: (res => {
-        if(res.body) this.overAllStats = res.body;
-        if(this.overAllStats)
-          this.progress = this.overAllStats.overAllStats[0].stats[0].stats[0].attended;
-        console.log(this.overAllStats)
-      })
-    })
+        this.loading = false;
+        if(res.body) this.managarialOverAllStats = res.body;
+      }),
+      error: () => {this.loading = false;}
+    });
+    const leaderOverAllStatsObservable = this.reportService.getLeaderOverAllStats(this.userService.getUserId(), this.selectedDate);
+    leaderOverAllStatsObservable.subscribe({
+      next: (res => {
+        this.loading = false;
+        if(res.body) this.leaderOverAllStats = res.body;
+      }),
+      error: () => {this.loading = false;}
+    });
+
+    const teacherOverAllStatsObservable = this.reportService.getTeacherOverAllStats(this.userService.getUserId(), this.selectedDate);
+    teacherOverAllStatsObservable.subscribe({
+      next: (res => {
+        this.loading = false;
+        if(res.body) this.teacherOverAllStats = res.body;
+      }),
+      error: () => {this.loading = false;}
+    });
   }
 
-  openEventReport(schoolId: number, eventName: string, type: string) {
-    const selectedDate = `${this.selectedYear}-${this.months.indexOf(this.selectedMonth) + 1}-${this.selectedDay}`;
-    this.router.navigate(['report', schoolId, eventName, type, selectedDate])
+  openManagerEventReport(schoolId: number, eventName: string, type: string) {
+    this.router.navigate(['report/manager', schoolId, eventName, type, this.selectedDate])
+  }
+
+  openClassEventReport(classId: number, eventName: string, type: string) {
+    this.router.navigate(['report/class', classId, eventName, type, this.selectedDate])
   }
 }

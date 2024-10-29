@@ -53,7 +53,18 @@
         @if (errorMessage !== '') {
             <app-error-message [message]="errorMessage" />
         }
-        <button [disabled]="buttonDisabled" type="submit">تمام كدا</button>
+        <button [disabled]="buttonDisabled" type="submit">
+            @if(loading) {
+                <svg width="4vh" height="4vh" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="40" stroke="#0F3A57" stroke-width="4" fill="none">
+                      <animate attributeName="r" from="40" to="50" dur="1s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" from="1" to="0.2" dur="1s" repeatCount="indefinite" />
+                    </circle>
+                </svg>
+            } @else {
+                تمام كدا
+            }
+        </button>
     </form>
 </div>
 <app-nav-menu />

@@ -73,11 +73,3 @@ input {
     padding-left: 0.563rem;
     padding-right: 0.563rem;
 }
-
-#svg-container {
-    z-index: -1;
-    position: fixed;
-    bottom: 0px;
-    width: 22.06vh;
-    height: 18.57vh;
-}

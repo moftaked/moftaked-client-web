@@ -5,15 +5,18 @@ import { classOverAllStatsResultBody, managerOverAllStatsResultBody, ReportServi
 import { UserService } from '../services/user.service';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ErrorMessageComponent } from "../error-message/error-message.component";
 
 @Component({
   selector: 'app-report',
   standalone: true,
-  imports: [AppHeaderComponent, NavMenuComponent, FormsModule],
+  imports: [AppHeaderComponent, NavMenuComponent, FormsModule, ErrorMessageComponent],
   templateUrl: './report.component.html',
   styleUrl: './report.component.css'
 })
 export class ReportComponent implements OnInit{
+  errorMessage = '';
   loading = false;
   managarialOverAllStats: managerOverAllStatsResultBody | undefined = undefined;  
   leaderOverAllStats: classOverAllStatsResultBody | undefined = undefined;
@@ -26,15 +29,21 @@ export class ReportComponent implements OnInit{
   selectedYear: number = this.today.getFullYear();
   selectedMonth: number = this.today.getMonth() + 1;
   selectedDay: number = this.today.getDate();
-  selectedDate = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
+  selectedDate = '';
 
   constructor(
     private reportService: ReportService, 
     private userService: UserService,
-    private router: Router
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
+    this.userService.profile().subscribe({
+      error: (error: HttpErrorResponse) => {
+        if(error.status == 401)
+          this.router.navigate(['login'])
+      }
+    })
     for (let year = 2024; year <= this.today.getFullYear(); year++) {
       this.years.push(year);
     }
@@ -55,7 +64,12 @@ export class ReportComponent implements OnInit{
         this.loading = false;
         if(res.body) this.managarialOverAllStats = res.body;
       }),
-      error: () => {this.loading = false;}
+      error: (error: HttpErrorResponse) => {
+          this.loading = false;
+          if(error.status == 0) {
+            this.errorMessage = 'شكلك اوفلاين دلوقتي، لازم يبقى في نت عشان تقدر تشوف التقارير';
+          }
+        }
     });
     const leaderOverAllStatsObservable = this.reportService.getLeaderOverAllStats(this.userService.getUserId(), this.selectedDate);
     leaderOverAllStatsObservable.subscribe({

@@ -91,8 +91,8 @@
             </div>
             <hr>
             <div class="table-body">
-                @for (student of students; track student.student_id) {
-                    <div class="row" (click)="openEditDialog(student.student_id, 'student')">
+                @for (student of students; track student.student_id; let index = $index) {
+                    <div [style.backgroundColor]="index % 2 === 1? '#2692D9': ''" class="row" (click)="openEditDialog(student.student_id, 'student')">
                         <div class="cell">
                             {{student[studentCurrentAttributeActual]}}
                         </div>
@@ -153,8 +153,8 @@
                 </div>
                 <hr>
                 <div class="table-body">
-                    @for (teacher of teachers; track teacher.teacher_id) {
-                        <div class="row" (click)="openEditDialog(teacher.teacher_id, 'teacher')">
+                    @for (teacher of teachers; track teacher.teacher_id; let index = $index) {
+                        <div [style.backgroundColor]="index % 2 === 1? '#2692D9': ''" class="row" (click)="openEditDialog(teacher.teacher_id, 'teacher')">
                             <div class="cell">
                                 {{teacher[teacherCurrentAttributeActual]}}
                             </div>

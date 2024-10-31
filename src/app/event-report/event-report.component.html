@@ -16,6 +16,12 @@
             <text x="50%" y="129" text-anchor="middle" fill="#F5F5F5" font-size="12px" font-family="tajawal-bold">النسبة المئوية لعدد الحاضرين</text>
         </svg>
     }
+    <div style="text-align: center; font-size: 1.5rem;">
+        متوسط عدد الحاضرين: {{math.round(average)}}
+    </div>
+    <div style="text-align: center; font-size: 1.5rem;">
+        في اخر {{attendance.length}} جمعات
+    </div>
     <div class="h-section">
         @for(reocrd of attendance; track $index; let index = $index) {
             @if(index < 2){

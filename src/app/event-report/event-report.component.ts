@@ -21,6 +21,7 @@ export class EventReportComponent implements OnInit{
   lastFiveWeeksAttendance: lastFiveWeeksResBody | null = null;
   polyLinePoints = '';
   attendance: [weekAttendanceRecord] = [] as unknown[] as [weekAttendanceRecord];
+  average = 0;
   math = Math
 
   constructor(
@@ -42,6 +43,7 @@ export class EventReportComponent implements OnInit{
           this.lastFiveWeeksAttendance = res.body;
           if(this.lastFiveWeeksAttendance){
             this.attendance = this.lastFiveWeeksAttendance.results;
+            this.average = this.attendance.map((record) => {return record.attended;}).reduce((sum, attended) => {return sum += attended}) / this.attendance.length;
             const polyLineWidth = 200;
             const polyLineHeight = 100;
             for(let index = 0; index < this.attendance.length; index++) {

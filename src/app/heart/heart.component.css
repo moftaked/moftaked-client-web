@@ -1,4 +1,4 @@
-#class-body {
+#page-body {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -6,45 +6,6 @@
     gap: 0.92vh;
     width: 93.6%;
     padding-bottom: calc(3.17vw + 128px);
-}
-
-#class-name {
-    user-select: none;
-    font-family: 'tajawal-bold';
-    font-size: 2.94vh;
-    line-height: 3.49vh;
-    height: 3.49vh;
-    display: flex;
-    align-items: center;
-}
-
-#class-controls {
-    display: flex;
-    max-width: 600px;
-    flex-wrap: wrap;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    padding: 0.9vh 2.88vw;
-    gap: 10px;
-}
-
-.button {
-    user-select: none;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    text-align: center;
-    align-items: center;
-    padding: 1.28vh;
-    gap: 0.438rem;
-    width: fit-content;
-    height: fit-content;
-    background: #2692D9;
-    border-radius: 5px;
-    font-family: 'tajawal-bold';
-    font-size: 2.2vh;
-    line-height: 2.57vh;
 }
 
 .minimized-table {
@@ -144,8 +105,8 @@ hr {
     flex-direction: row;
     width: 100%;
     gap: 2.88vw;
-    padding-top: 1.5vh;
     padding-bottom: 1.5vh;
+    padding-top: 1.5vh;
     border-radius: 10px;
 }
 

@@ -17,6 +17,17 @@ export class UserService {
 
   constructor(private http: HttpClient, private authService: AuthService) { }
 
+  profile() {
+    return this.http.get(
+      `/auth/profile`, 
+      {
+        observe: 'response',
+        headers: {
+          'Authorization': this.authService.getAuthorizationHeader()
+        }
+      });
+  }
+
   getClasses() {
     return this.http.get<userClassesResultBody>(
       `/users/${this.getUserId()}/classes`, 

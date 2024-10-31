@@ -38,6 +38,14 @@
                 </svg>              
             }
         </div>
+        @if(selectedDate) {
+            <div>
+                {{this.selectedDate}}
+            </div>
+        }
+        @if(errorMessage) {
+            <app-error-message [message]="errorMessage" />
+        }
         @if(managarialOverAllStats) {
             @for(school of managarialOverAllStats.overAllStats; track school.school_name) {
                 <div class="label">
@@ -50,18 +58,18 @@
                             @for(stats of event.stats; track $index) {
                                 <div (click)="openManagerEventReport(school.school_id, event.event_name, stats.type)" class="v-section" style="flex-grow: 1;">
                                     <div style="flex-grow: 1; width: 100%; user-select: none;">
-                                        <div style="padding: 0.75rem; background-color: #2692D9; border-radius: 10px; width: fit-content; margin: auto;">
+                                        <div [style.backgroundColor]="stats.type === 'teacher'? '#B78F3F': '#BC3D41'" style="box-shadow: 0px 2px 8px -1px rgba(0, 0, 0, 0.25); padding: 0.75rem; border-radius: 10px; width: fit-content; margin: auto;">
                                             <div class="event-type">
                                                 {{stats.type === 'student'? 'مخدومين': 'خدام'}}
                                             </div>
                                             <svg viewBox="0 0 36 36" style="max-height: 200px; max-width: 200px;" width="30vw" height="30vw">
-                                                <circle cx="18" cy="18" r="16" fill="none" stroke="#ddd" stroke-width="2" />
+                                                <circle cx="18" cy="18" r="16" fill="none" [attr.stroke]="stats.type === 'teacher'? '#D8BF8D': '#E6B2B4'" stroke-width="2" />
                                                 <circle
                                                   cx="18"
                                                   cy="18"
                                                   r="16"
                                                   fill="none"
-                                                  stroke="#0F3A57"
+                                                  [attr.stroke]="stats.type === 'teacher'? '#955204': '#742528'"
                                                   stroke-width="2"
                                                   stroke-dasharray="100"
                                                   stroke-linecap="round"
@@ -92,18 +100,18 @@
                             <div class="h-section">
                                 <div (click)="openClassEventReport(class.class_id, event.event_name, event.type)" class="v-section" style="flex-grow: 1;">
                                     <div style="flex-grow: 1; width: 100%; user-select: none;">
-                                        <div style="padding: 0.75rem; background-color: #2692D9; border-radius: 10px; width: fit-content; margin: auto;">
+                                        <div [style.backgroundColor]="event.type === 'teacher'? '#B78F3F': '#BC3D41'" style="box-shadow: 0px 2px 8px -1px rgba(0, 0, 0, 0.25); padding: 0.75rem; border-radius: 10px; width: fit-content; margin: auto;">
                                             <div class="event-type">
                                                 {{event.type === 'student'? 'مخدومين': 'خدام'}}
                                             </div>
                                             <svg viewBox="0 0 36 36" style="max-height: 200px; max-width: 200px;" width="30vw" height="30vw">
-                                                <circle cx="18" cy="18" r="16" fill="none" stroke="#ddd" stroke-width="2" />
+                                                <circle cx="18" cy="18" r="16" fill="none" [attr.stroke]="event.type === 'teacher'? '#D8BF8D': '#E6B2B4'" stroke-width="2" />
                                                 <circle
                                                     cx="18"
                                                     cy="18"
                                                     r="16"
                                                     fill="none"
-                                                    stroke="#0F3A57"
+                                                    [attr.stroke]="event.type === 'teacher'? '#955204': '#742528'"
                                                     stroke-width="2"
                                                     stroke-dasharray="100"
                                                     stroke-linecap="round"
@@ -135,18 +143,18 @@
                             <div class="h-section">
                                 <div (click)="openClassEventReport(class.class_id, event.event_name, event.type)" class="v-section" style="flex-grow: 1;">
                                     <div style="flex-grow: 1; width: 100%; user-select: none;">
-                                        <div style="padding: 0.75rem; background-color: #2692D9; border-radius: 10px; width: fit-content; margin: auto;">
+                                        <div [style.backgroundColor]="event.type === 'teacher'? '#B78F3F': '#BC3D41'" style="box-shadow: 0px 2px 8px -1px rgba(0, 0, 0, 0.25); padding: 0.75rem; border-radius: 10px; width: fit-content; margin: auto;">
                                             <div class="event-type">
                                                 {{event.type === 'student'? 'مخدومين': 'خدام'}}
                                             </div>
                                             <svg viewBox="0 0 36 36" style="max-height: 200px; max-width: 200px;" width="30vw" height="30vw">
-                                                <circle cx="18" cy="18" r="16" fill="none" stroke="#ddd" stroke-width="2" />
+                                                <circle cx="18" cy="18" r="16" fill="none" [attr.stroke]="event.type === 'teacher'? '#D8BF8D': '#E6B2B4'" stroke-width="2" />
                                                 <circle
                                                     cx="18"
                                                     cy="18"
                                                     r="16"
                                                     fill="none"
-                                                    stroke="#0F3A57"
+                                                    [attr.stroke]="event.type === 'teacher'? '#955204': '#742528'"
                                                     stroke-width="2"
                                                     stroke-dasharray="100"
                                                     stroke-linecap="round"

@@ -12,6 +12,7 @@ import { TeacherFormComponent } from './teacher-form/teacher-form.component';
 import { EventsHomeComponent } from './events-home/events-home.component';
 import { ReportComponent } from './report/report.component';
 import { EventReportComponent } from './event-report/event-report.component';
+import { HeartComponent } from './heart/heart.component';
 
 export const routes: Routes = [
     {
@@ -86,6 +87,11 @@ export const routes: Routes = [
     {
         path: 'report/class/:classId/:eventName/:type/:date',
         component: EventReportComponent,
+        canActivate: [authGuard]
+    },
+    {
+        path: 'bring-em-to-the-church',
+        component: HeartComponent,
         canActivate: [authGuard]
     },
     {

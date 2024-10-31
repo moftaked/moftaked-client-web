@@ -13,14 +13,14 @@ export class NavMenuComponent implements OnInit{
   isHomeActive = false;
   isEventsActive = false;
   isReportsActive = false;
+  isHeartActive = false;
 
   ngOnInit(): void {
     const openedRoute = this.route.snapshot.url;
     this.isHomeActive = openedRoute[0].toString() === 'home';
     this.isReportsActive = openedRoute[0].toString() === 'report';
     this.isEventsActive = openedRoute.some((segment) => {return segment.toString() === 'attendance' || segment.toString() === 'events'})
-
-    console.log(this.isHomeActive);
+    this.isHeartActive = openedRoute[0].toString() === 'bring-em-to-the-church';
   }
   onClickHome() {
     this.router.navigate(['home'])
@@ -32,5 +32,9 @@ export class NavMenuComponent implements OnInit{
 
   onClickReports() {
     this.router.navigate(['report'])
+  }
+
+  onClickHeart() {
+    this.router.navigate(['bring-em-to-the-church'])
   }
 }

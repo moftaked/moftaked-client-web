@@ -1,0 +1,67 @@
+<!-- eslint-disable @angular-eslint/template/interactive-supports-focus -->
+<!-- eslint-disable @angular-eslint/template/click-events-have-key-events -->
+<app-app-header />
+<div id="page-body">
+    <div style="text-align: center; font-size: 1.25rem; direction: rtl;">
+        "معرفة اعرف حال غنمك، واجعل قلبك إلى قطعانك،" (أم 27: 23).
+    </div>
+    @for(school of schools; track school.school_id) {
+        <div>
+            {{school.school_name}}
+        </div>
+        @for(class of school.classes; track $index) {
+            <div>
+                {{class.class_name}}
+            </div>
+            @for(type of class.types; track $index) {
+                <div>
+                    {{type.type === 'teacher'? 'خدام': 'مخدومين'}}
+                </div>
+                @for(event of type.events; track $index) {
+                    @if(event.toggled) {
+                        <div class="table">
+                            <div class="table-name">
+                                {{event.event_name}}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-angle-contract" viewBox="0 0 16 16" (click)="toggleTable(event)">
+                                    <path fill-rule="evenodd" d="M.172 15.828a.5.5 0 0 0 .707 0l4.096-4.096V14.5a.5.5 0 1 0 1 0v-3.975a.5.5 0 0 0-.5-.5H1.5a.5.5 0 0 0 0 1h2.768L.172 15.121a.5.5 0 0 0 0 .707M15.828.172a.5.5 0 0 0-.707 0l-4.096 4.096V1.5a.5.5 0 1 0-1 0v3.975a.5.5 0 0 0 .5.5H14.5a.5.5 0 0 0 0-1h-2.768L15.828.879a.5.5 0 0 0 0-.707"/>
+                                </svg>
+                            </div>
+                            <div class="table-header">
+                                <div class="column-title">
+                                    <div class="column-name">
+                                        عدد مرات الغياب
+                                    </div>        
+                                </div>
+                                <div class="column-title">الاسم</div>
+                            </div>
+                            <hr>
+                            <div class="table-body">
+                                @for (person of event.records; track $index; let index = $index) {
+                                    <div [style.backgroundColor]="index % 2 === 1? '#2692D9': ''" class="row">
+                                        <div class="cell">
+                                            {{person.absent}}
+                                        </div>
+                                        <div class="cell">
+                                            {{person.person_name}}
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    } @else {
+                        <div class="minimized-table" (click)="toggleTable(event)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-angle-expand" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707m4.344-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707"/>
+                            </svg>
+                            <div class="table-name">
+                                {{event.event_name}}
+                            </div>
+                        </div>
+                        
+                    }
+                }
+            }
+        }
+    }
+</div>
+<app-nav-menu />

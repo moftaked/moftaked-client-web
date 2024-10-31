@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@angular/service-worker/config/schema.json",
   "index": "/index.html",
   "appData": {
-    "version": "0.2.0"
+    "version": "1.0.0"
   },
   "assetGroups": [
     {
@@ -40,6 +40,18 @@
         "maxSize": 1,
         "maxAge": "14d",
         "timeout": "5s"
+      }
+    },
+    {
+      "name": "attendance",
+      "urls": [
+        "classes/*/*/events/*/attendance"
+      ],
+      "cacheConfig": {
+        "maxSize": 100,
+        "maxAge": "14d",
+        "timeout": "5s",
+        "strategy": "freshness"
       }
     },
     {

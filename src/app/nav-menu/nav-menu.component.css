@@ -29,14 +29,10 @@
     gap: 2px;
 }
 
-svg {
-    height: 80%;
-    width: 80%;
-}
-
 .item-label {
     height: 0.75rem;
     line-height: 0.75rem;
+    text-align: center;
 }
 
 .item[activated="true"] {

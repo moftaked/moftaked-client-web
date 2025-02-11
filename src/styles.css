@@ -33,3 +33,5 @@ body {
     font-family: 'tajawal-bold';
     src: url('/fonts/Tajawal-Bold.ttf') format('truetype'),
 }
+html, body { height: 100%; }
+body { margin: 0; font-family: 'tajawal-regular', Roboto, "Helvetica Neue", sans-serif; }

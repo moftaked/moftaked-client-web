@@ -7,6 +7,7 @@ import { attendance, AttendanceService } from './attendance.service';
 import { ErrorMessageComponent } from '../error-message/error-message.component';
 import { AuthService } from '../auth/auth.service';
 import { NavMenuComponent } from "../nav-menu/nav-menu.component";
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-attendance',
@@ -36,6 +37,7 @@ export class AttendanceComponent implements OnInit{
     private route: ActivatedRoute,
     private router: Router,
     private authService: AuthService,
+    private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
@@ -48,7 +50,6 @@ export class AttendanceComponent implements OnInit{
       this.type = 'teachers';
     else if(url[url.length-1]?.toString() === 'students')
       this.type = 'students';
-    console.log(this.type)
     const classObservable = this.classService.getClassName(this.classId);
     classObservable.subscribe({
       next: (res) => {
@@ -91,8 +92,8 @@ export class AttendanceComponent implements OnInit{
         next: (res) => {
           if(res.body){
             this.attendance = res.body.attendance;
+            this.applyOfflineAttendance();
             this.date = new Date(Date.parse(res.body.date[0].occurence_date))
-            console.log(res.body)
           }
         },
         error: (err: HttpErrorResponse) => {
@@ -108,8 +109,8 @@ export class AttendanceComponent implements OnInit{
         next: (res) => {
           if(res.body){
             this.attendance = res.body.attendance;
+            this.applyOfflineAttendance();
             this.date = new Date(Date.parse(res.body.date[0].occurence_date))
-            console.log(res.body)
           }
         },
         error: (err: HttpErrorResponse) => {
@@ -120,6 +121,27 @@ export class AttendanceComponent implements OnInit{
     }
   }
 
+  applyOfflineAttendance() {
+    const dirtyAttendance = localStorage.getItem(`attendanceC${this.classId}E${this.eventId}`);
+    if(dirtyAttendance != null) {
+      const {absent, attended} = JSON.parse(dirtyAttendance);
+      this.attended = new Set(attended);
+      this.absent = new Set(absent);
+      this.attendance.forEach((person: attendance) => {
+        if(this.attended.has(person.person_id)){
+          person.attended = 1;
+        } else if(this.absent.has(person.person_id)){
+          person.attended = 0;
+        }
+      })
+      this.snackBar.open('كان في غياب لسة مترفعش حطيناهولك يا فندم', 'تمام', {
+        duration: 5000,
+        verticalPosition: 'top',
+        horizontalPosition: 'center',
+        direction: 'rtl'
+      })
+    }
+  }
   onAddDayClick() {
     if(this.type == 'students') {
       const observable = this.attendanceService.createStudentEventOccurence(this.classId, this.eventId);
@@ -156,38 +178,51 @@ export class AttendanceComponent implements OnInit{
       this.absent.add(person.person_id);
     }
     person.attended = Math.abs(person.attended - 1) as 0 | 1;
-    console.log('attended: ', this.attended);
-    console.log('absent: ', this.absent)
+    setTimeout(() => {
+      this.localAttendanceSave();
+    }, 0);
   }
   
+  onOfflineFlushAttempt = () => {
+    this.localAttendanceSave();
+    this.snackBar.open('شكلك معندكش نت دلوقتي حاول بعدين', 'تمام', {
+      duration: 5000,
+      verticalPosition: 'top',
+      horizontalPosition: 'center',
+      direction: 'rtl'
+    })
+  }
+
+  localAttendanceSave() {
+    this.loading = false;
+    this.attendanceFlushSuccess = false;
+    localStorage.setItem(`attendanceC${this.classId}E${this.eventId}`, JSON.stringify({absent: [...this.absent.keys()], attended: [...this.attended.keys()]}));
+  }
+
+  flushAttendanceObserver = {
+    next: () => {
+      this.loading = false;
+      this.attendanceFlushSuccess = true;
+      setTimeout(() => {this.attendanceFlushSuccess = false}, 5000);
+      localStorage.removeItem(`attendanceC${this.classId}E${this.eventId}`);
+      this.attended.clear();
+      this.absent.clear();
+    },
+    error: this.onOfflineFlushAttempt
+  }
+
   flushAttendance() {
     this.attendanceFlushSuccess = false;
     const attendance = {attendance: new Array<number>(), absence: new Array<number>()};
     this.attended.forEach((personId) => {attendance.attendance.push(personId)});
-    this.attended.clear();
     this.absent.forEach((personId) => {attendance.absence.push(personId)});
-    this.absent.clear();
     if(attendance.attendance.length +  attendance.absence.length > 0){
+      this.loading = true;
       if(this.type == 'students') {
-        this.loading = true;
-        this.attendanceService.createStudentAttendance(this.classId, this.eventId, attendance).subscribe(
-          () => {
-            this.loading = false;
-            this.attendanceFlushSuccess = true;
-            setTimeout(() => {this.attendanceFlushSuccess = false}, 5000);
-          }
-        );
+        this.attendanceService.createStudentAttendance(this.classId, this.eventId, attendance).subscribe(this.flushAttendanceObserver);
       } else if(this.type == 'teachers') {
-        this.loading = true;
-        this.attendanceService.createTeacherAttendance(this.classId, this.eventId, attendance).subscribe(
-          () => {
-            this.loading = false;
-            this.attendanceFlushSuccess = true;
-            setTimeout(() => {this.attendanceFlushSuccess = false}, 5000);
-          }
-        );
+        this.attendanceService.createTeacherAttendance(this.classId, this.eventId, attendance).subscribe(this.flushAttendanceObserver);
       }
-
     }
 
   }

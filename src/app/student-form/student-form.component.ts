@@ -22,7 +22,7 @@ import { NavMenuComponent } from "../nav-menu/nav-menu.component";
     NavMenuComponent
 ],
   templateUrl: './student-form.component.html',
-  styleUrl: './student-form.component.css'
+  styleUrls: ['./student-form.component.css']
 })
 export class StudentFormComponent implements OnInit{
   loading = false;
@@ -65,32 +65,21 @@ export class StudentFormComponent implements OnInit{
   ngOnInit(): void {
     this.classId = this.route.snapshot.paramMap.get('classId');
     this.studentId = this.route.snapshot.paramMap.get('studentId');
-    console.log(`classId: ${this.classId}`)
-    console.log(`studentId: ${this.studentId}`)
-    console.log(`mode was: ${this.mode}`)
-    if(this.classId != null){
+
+    if (!this.studentId) {
       this.mode = 'add'
-      console.log('mode set to add')
-    }
-    else if(this.studentId != null){
+    } else {
       this.mode = 'edit'
-      console.log('mode set to edit')
-
     }
-    console.log(`mode: ${this.mode}`)
 
-    if(this.mode == 'edit') {
+    if (this.mode === 'edit') {
       const observable = this.studentService.getStudent(this.studentId);
       observable.subscribe({
         next: (res) => {
-          console.log(res);
           if(res.body != undefined){
             this.student = res.body.students[0]
             const controls = this.studentForm.controls;
             controls.student_name.setValue(this.student.student_name);
-            console.log(this.student)
-            console.log(`current editing student name: ${this.student.student_name}`)
-            console.log(`current student name fromcontrol value: ${controls.student_name.value}`)
             controls.address.setValue(this.student.address);
             controls.district.setValue(this.student.district);
             if(this.student.notes)

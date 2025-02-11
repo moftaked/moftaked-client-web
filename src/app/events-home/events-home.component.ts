@@ -36,7 +36,6 @@ export class EventsHomeComponent implements OnInit {
           this.authService.markTokenInvalid();
           this.router.navigate(['/login'])
         }
-        console.log(err);
       }
     })
   }

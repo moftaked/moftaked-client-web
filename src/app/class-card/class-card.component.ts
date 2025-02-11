@@ -13,7 +13,6 @@ export class ClassCardComponent {
   @Output() clickedOnCard = new EventEmitter<number>();
 
   onClick() {
-    console.log('clicked on the card with classId: ' + this.classId);
     this.clickedOnCard.emit(this.classId);
   }
 }

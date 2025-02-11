@@ -64,7 +64,6 @@ export class ClassComponent implements OnInit{
       next: (res: HttpResponse<classResultBody>) => {
         if(res.body)
           this.name = res.body[0].class_name;
-          console.log(res)
       },
 
       error: (err: HttpErrorResponse) => {
@@ -72,7 +71,6 @@ export class ClassComponent implements OnInit{
           this.authService.markTokenInvalid();
           this.router.navigate(['/login'])
         }
-        console.log(err);
       }
     })
 
@@ -81,7 +79,6 @@ export class ClassComponent implements OnInit{
         if(res.body){
           this.studentsTotalCount = res.body.metadata[0].count;
           this.students = res.body.students;
-          console.log(res)
         }
       },
 
@@ -92,7 +89,6 @@ export class ClassComponent implements OnInit{
         }
         else if(err.status == 403)
           this.router.navigate(['/home'])
-        console.log(err);
       }
     })
 
@@ -101,7 +97,6 @@ export class ClassComponent implements OnInit{
         if(res.body){
           this.teachersTotalCount = res.body.metadata[0].count;
           this.teachers = res.body.teachers;
-          console.log(res)
         }
       },
 
@@ -110,7 +105,6 @@ export class ClassComponent implements OnInit{
           this.authService.markTokenInvalid();
           this.router.navigate(['/login'])
         }
-        console.log(err);
       }
     })
   }

@@ -53,7 +53,6 @@ export class EventReportComponent implements OnInit{
         }
       })
     } else if(this.classId) {
-      console.log("AAAAAAAAAAAA" ,this.classId)
       const leaderObservable = this.eventReportService.getLeaderLastFiveWeeksAttendance(this.classId, this.eventName, this.eventType, this.date)
       leaderObservable.subscribe({
         next: (res) => {

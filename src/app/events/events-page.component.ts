@@ -69,7 +69,6 @@ export class EventsPageComponent implements OnInit {
   }
 
   onCardClick(eventId: number, type: 'students' | 'teachers') {
-    console.log(`clicked on event: ${eventId}`)
     this.router.navigate(['class', this.classId, 'events', eventId, type])
   }
 }

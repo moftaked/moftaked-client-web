@@ -64,32 +64,21 @@ export class TeacherFormComponent implements OnInit{
   ngOnInit(): void {
     this.classId = this.route.snapshot.paramMap.get('classId');
     this.teacherId = this.route.snapshot.paramMap.get('teacherId');
-    console.log(`classId: ${this.classId}`)
-    console.log(`teacherId: ${this.teacherId}`)
-    console.log(`mode was: ${this.mode}`)
     if(this.classId != null){
       this.mode = 'add'
-      console.log('mode set to add')
     }
     else if(this.teacherId != null){
       this.mode = 'edit'
-      console.log('mode set to edit')
-
     }
-    console.log(`mode: ${this.mode}`)
 
     if(this.mode == 'edit') {
       const observable = this.teacherService.getTeacher(this.teacherId);
       observable.subscribe({
         next: (res) => {
-          console.log(res);
           if(res.body != undefined){
             this.teacher = res.body.teachers[0]
             const controls = this.teacherForm.controls;
             controls.teacher_name.setValue(this.teacher.teacher_name);
-            console.log(this.teacher)
-            console.log(`current editing student name: ${this.teacher.teacher_name}`)
-            console.log(`current student name fromcontrol value: ${controls.teacher_name.value}`)
             controls.address.setValue(this.teacher.address);
             controls.district.setValue(this.teacher.district);
             if(this.teacher.notes)

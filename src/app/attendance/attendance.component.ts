@@ -8,6 +8,7 @@ import { ErrorMessageComponent } from '../error-message/error-message.component'
 import { AuthService } from '../auth/auth.service';
 import { NavMenuComponent } from "../nav-menu/nav-menu.component";
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { OfflineAttendanceService } from './offline-attendance.service';
 
 @Component({
   selector: 'app-attendance',
@@ -34,6 +35,7 @@ export class AttendanceComponent implements OnInit{
   constructor(
     private classService: ClassService, 
     private attendanceService: AttendanceService,
+    private offlineAttendanceService: OfflineAttendanceService,
     private route: ActivatedRoute,
     private router: Router,
     private authService: AuthService,
@@ -121,27 +123,7 @@ export class AttendanceComponent implements OnInit{
     }
   }
 
-  applyOfflineAttendance() {
-    const dirtyAttendance = localStorage.getItem(`attendanceC${this.classId}E${this.eventId}`);
-    if(dirtyAttendance != null) {
-      const {absent, attended} = JSON.parse(dirtyAttendance);
-      this.attended = new Set(attended);
-      this.absent = new Set(absent);
-      this.attendance.forEach((person: attendance) => {
-        if(this.attended.has(person.person_id)){
-          person.attended = 1;
-        } else if(this.absent.has(person.person_id)){
-          person.attended = 0;
-        }
-      })
-      this.snackBar.open('كان في غياب لسة مترفعش حطيناهولك يا فندم', 'تمام', {
-        duration: 5000,
-        verticalPosition: 'top',
-        horizontalPosition: 'center',
-        direction: 'rtl'
-      })
-    }
-  }
+
   onAddDayClick() {
     if(this.type == 'students') {
       const observable = this.attendanceService.createStudentEventOccurence(this.classId, this.eventId);
@@ -183,6 +165,27 @@ export class AttendanceComponent implements OnInit{
     }, 0);
   }
   
+  applyOfflineAttendance() {
+    const offlineAttendance = this.offlineAttendanceService.getOfflineAttendance(this.classId, this.eventId, this.type);
+    if(offlineAttendance.isEmpty == false) {
+      this.attended = offlineAttendance.attended;
+      this.absent = offlineAttendance.absent;
+      this.attendance.forEach((person: attendance) => {
+        if(this.attended.has(person.person_id)){
+          person.attended = 1;
+        } else if(this.absent.has(person.person_id)){
+          person.attended = 0;
+        }
+      })
+      this.snackBar.open('كان في غياب لسة مترفعش حطيناهولك يا فندم', 'تمام', {
+        duration: 5000,
+        verticalPosition: 'top',
+        horizontalPosition: 'center',
+        direction: 'rtl'
+      })
+    }
+  }
+  
   onOfflineFlushAttempt = () => {
     this.localAttendanceSave();
     this.snackBar.open('شكلك معندكش نت دلوقتي حاول بعدين', 'تمام', {
@@ -196,7 +199,7 @@ export class AttendanceComponent implements OnInit{
   localAttendanceSave() {
     this.loading = false;
     this.attendanceFlushSuccess = false;
-    localStorage.setItem(`attendanceC${this.classId}E${this.eventId}`, JSON.stringify({absent: [...this.absent.keys()], attended: [...this.attended.keys()]}));
+    this.offlineAttendanceService.localSave(this.attended, this.absent, this.classId, this.eventId, this.type);
   }
 
   flushAttendanceObserver = {
@@ -204,7 +207,7 @@ export class AttendanceComponent implements OnInit{
       this.loading = false;
       this.attendanceFlushSuccess = true;
       setTimeout(() => {this.attendanceFlushSuccess = false}, 5000);
-      localStorage.removeItem(`attendanceC${this.classId}E${this.eventId}`);
+      this.offlineAttendanceService.clear(this.classId, this.eventId, this.type);
       this.attended.clear();
       this.absent.clear();
     },

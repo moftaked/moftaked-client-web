@@ -12,7 +12,7 @@ import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
   standalone: true,
   imports: [NavMenuComponent, ClassCardComponent, AppHeaderComponent],
   templateUrl: './events-home.component.html',
-  styleUrl: './events-home.component.css'
+  styleUrl: '../home/home.component.css'
 })
 export class EventsHomeComponent implements OnInit {
 

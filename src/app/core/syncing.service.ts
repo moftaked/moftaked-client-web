@@ -14,6 +14,8 @@ export class SyncingService {
   private isDataSynced = false;
   studentSyncingCompleted = false;
   teacherSyncingCompleted = false;
+  lastClassIndex = -1;
+  completionSnackbarTriggered = false;
 
   constructor(
     private snackBar: MatSnackBar, 
@@ -31,10 +33,19 @@ export class SyncingService {
       horizontalPosition: 'center',
       direction: 'rtl'
     });
-    this.attendanceSyncingClassIterator(classes, 0);
+    this.attendanceSyncingClassIterator(classes);
   }
   
   attendanceSyncingStudentsIterator(classes: Class[], classIndex: number, studentEvents: [{event_id: number, event_name: string}], studentsEventsIndex: number) {
+    if(studentEvents[studentsEventsIndex] == undefined) {
+      if(this.teacherSyncingCompleted) {
+        this.attendanceSyncingClassIterator(classes);
+        this.studentSyncingCompleted = this.teacherSyncingCompleted = false;
+      }
+      this.studentSyncingCompleted = true;
+      return;
+    }
+    
     this.attendanceService.getStudentsEventName(classes[classIndex].class_id, studentEvents[studentsEventsIndex].event_id).subscribe(() => {
       this.attendanceService.getStudentAttendees(classes[classIndex].class_id, studentEvents[studentsEventsIndex].event_id).subscribe(() => {
         if(studentsEventsIndex + 1 < studentEvents.length)
@@ -42,7 +53,7 @@ export class SyncingService {
         else {
           this.studentSyncingCompleted = true;
           if(this.studentSyncingCompleted && this.teacherSyncingCompleted) {
-            this.attendanceSyncingClassIterator(classes, classIndex + 1);
+            this.attendanceSyncingClassIterator(classes);
             this.studentSyncingCompleted = this.teacherSyncingCompleted = false;
           }
         }
@@ -51,6 +62,14 @@ export class SyncingService {
   };
 
   attendanceSyncingTeachersIterator(classes: Class[], classIndex: number, teachersEvents: [{event_id: number, event_name: string}], teachersEventsIndex: number) {
+    if(teachersEvents[teachersEventsIndex] == undefined) {
+      if(this.studentSyncingCompleted) {
+        this.attendanceSyncingClassIterator(classes);
+        this.studentSyncingCompleted = this.teacherSyncingCompleted = false;
+      }
+      this.teacherSyncingCompleted = true;
+      return;
+    }
     this.attendanceService.getTeachersEventName(classes[classIndex].class_id, teachersEvents[teachersEventsIndex].event_id).subscribe(() => {
       this.attendanceService.getTeachersAttendees(classes[classIndex].class_id, teachersEvents[teachersEventsIndex].event_id).subscribe(() => {
         if(teachersEventsIndex + 1 < teachersEvents.length)
@@ -58,7 +77,7 @@ export class SyncingService {
         else {
           this.teacherSyncingCompleted = true;
           if(this.studentSyncingCompleted && this.teacherSyncingCompleted) {
-            this.attendanceSyncingClassIterator(classes, classIndex + 1);
+            this.attendanceSyncingClassIterator(classes);
             this.studentSyncingCompleted = this.teacherSyncingCompleted = false;
           }
         }
@@ -66,32 +85,37 @@ export class SyncingService {
     });
   };
 
-  attendanceSyncingClassIterator(classes: Class[], classIndex: number) {
-    if (classIndex >= classes.length) {
-      this.snackBar.open('حدثنالك بيانات الغياب', 'تمام', {
-        duration: 3000,
-        verticalPosition: 'top',
-        horizontalPosition: 'center',
-        direction: 'rtl',
-      })
+  attendanceSyncingClassIterator(classes: Class[]) {
+    this.lastClassIndex++;
+    if (this.lastClassIndex >= classes.length) {
+      if(this.completionSnackbarTriggered == false) {
+        this.snackBar.open('حدثنالك بيانات الغياب', 'تمام', {
+          duration: 3000,
+          verticalPosition: 'top',
+          horizontalPosition: 'center',
+          direction: 'rtl',
+        })
+        this.completionSnackbarTriggered = true;
+      }
       this.isDataSynced = true;
       return;
     }
-    this.classService.getClassName(classes[classIndex].class_id).subscribe();
-    this.eventsPageServices.getStudentsServices(classes[classIndex].class_id.toString()).subscribe({
+
+    this.classService.getClassName(classes[this.lastClassIndex].class_id).subscribe();
+    this.eventsPageServices.getStudentsServices(classes[this.lastClassIndex].class_id.toString()).subscribe({
       next: (res: HttpResponse<eventsResultBody>) => {
         if(res.body == undefined)
           return;
         let studentEvents = res.body.events;
-        this.attendanceSyncingStudentsIterator(classes, classIndex, studentEvents, 0);
+        this.attendanceSyncingStudentsIterator(classes, this.lastClassIndex, studentEvents, 0);
       }
     });
-    this.eventsPageServices.getTeachersServices(classes[classIndex].class_id.toString()).subscribe({
+    this.eventsPageServices.getTeachersServices(classes[this.lastClassIndex].class_id.toString()).subscribe({
       next: (res: HttpResponse<eventsResultBody>) => {
         if(res.body == undefined)
           return;
         let teachersEvents = res.body.events;
-        this.attendanceSyncingTeachersIterator(classes, classIndex, teachersEvents, 0);
+        this.attendanceSyncingTeachersIterator(classes, this.lastClassIndex, teachersEvents, 0);
       }
     })
   }

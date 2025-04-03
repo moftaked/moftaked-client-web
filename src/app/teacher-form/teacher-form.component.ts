@@ -22,7 +22,7 @@ import { NavMenuComponent } from "../nav-menu/nav-menu.component";
     NavMenuComponent
 ],
   templateUrl: './teacher-form.component.html',
-  styleUrl: './teacher-form.component.css'
+  styleUrl: '../student-form/student-form.component.css'
 })
 export class TeacherFormComponent implements OnInit{
   classId: string | null | undefined;

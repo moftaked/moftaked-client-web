@@ -7,7 +7,7 @@
 
     width: 93.66vw;
     height: fit-content;
-    padding-bottom: calc(3.17vw + 128px);
+    padding-bottom: calc(3.17vw + var(--nav-bar-height) + 50px);
 }
 
 .section {
@@ -26,7 +26,7 @@
     width: 100%;
     direction: rtl;
     font-family: 'tajawal-bold';
-    font-size: 16px;
+    font-size: var(--second-font-size);
 }
 
 .section-body {

@@ -6,7 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
   standalone: true,
   imports: [],
   templateUrl: './nav-menu.component.html',
-  styleUrl: './nav-menu.component.css'
+  styleUrl: './nav-menu.component.scss'
 })
 export class NavMenuComponent implements OnInit{
   constructor(private router: Router, private route: ActivatedRoute) {}

@@ -18,7 +18,7 @@ import { NavMenuComponent } from "../nav-menu/nav-menu.component";
     NavMenuComponent,
 ],
   templateUrl: './class.component.html',
-  styleUrl: './class.component.css'
+  styleUrl: './class.component.scss'
 })
 export class ClassComponent implements OnInit{
   id: string | null = '';

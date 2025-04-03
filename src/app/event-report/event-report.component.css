@@ -5,7 +5,7 @@
     padding: 1.84vh 3.17vw;
     gap: 0.92vh;
     width: 93.6%;
-    padding-bottom: calc(3.17vw + 128px);
+    padding-bottom: calc(3.17vw + var(--nav-bar-height) + 50px);
 }
 
 .header {
@@ -19,7 +19,7 @@
 }
 
 .h-section {
-    border-radius: 10px;
+    border-radius: var(--border-radius-var);
     padding: 1.28vh;
     display: flex;
     gap: 5px;

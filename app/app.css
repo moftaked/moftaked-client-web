@@ -3,5 +3,15 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --color-app-bg: #FAFAFA;
+  --color-main: #F2FDFF;
+  --color-main-comp: #000000;
+}
+
+html, body {
+  @apply font-[almarai-bold] bg-main dark:bg-black text-main-comp dark:text-white h-dvh;
+}
+
+@font-face {
+  font-family: 'almarai-bold';
+  src: url('/fonts/Almarai/Almarai-Bold.ttf') format('truetype'),
 }

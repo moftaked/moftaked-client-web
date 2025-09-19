@@ -8,9 +8,12 @@ This is a modern React application built with **React Router 7** (not Remix), us
 - **Build Tool**: Vite with React Router plugin
 - **Styling**: Tailwind CSS 4.x with custom Inter font theme
 - **Type System**: Strict TypeScript with path aliases (`~/*` → `./app/*`)
+- **Validation**: All user input validation uses Zod schemas exclusively
 - **Deployment**: Docker-based with multi-stage builds
 
 ## Key Patterns & Conventions
+
+never write comments
 
 ### Routing Structure
 - Routes defined in `app/routes.ts` using `RouteConfig` pattern:
@@ -46,6 +49,11 @@ This is a modern React application built with **React Router 7** (not Remix), us
 - Use `~/*` imports for app directory (configured in tsconfig paths)
 - Route components export default function + optional meta/loader functions
 - Keep route-specific types in co-located `+types/` directories
+
+### Data Validation
+- **Zod Only**: All user input validation must use Zod schemas
+- Never use manual validation or other validation libraries
+- Always use `safeParse()` function
 
 ### Docker Deployment
 - Multi-stage build optimized for production

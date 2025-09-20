@@ -8,25 +8,25 @@
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --color-main: #262624;
   --color-main-comp: #faf9f5;
-  --color-second: #30302E;
+  --color-second: var(--color-primary);
   --color-text: #FAF9F5;
 }
 
 html, body {
-  @apply font-[almarai-bold] dark:bg-main dark:text-text h-dvh;
+  @apply font-[almarai-regular] h-dvh;
 }
 
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px var(--color-second) inset !important;
-  -webkit-text-fill-color: var(--color-text) !important;
+  -webkit-box-shadow: 0 0 0 30px var(--color-background) inset !important;
+  -webkit-text-fill-color: var(--color-foreground) !important;
 }
 
 @font-face {
-  font-family: 'almarai-bold';
-  src: url('/fonts/Almarai/Almarai-Bold.ttf') format('truetype'),
+  font-family: 'almarai-regular';
+  src: url('/fonts/Almarai/Almarai-Regular.ttf') format('truetype'),
 }
 
 @theme inline {
@@ -69,13 +69,13 @@ input:-webkit-autofill:active {
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: #ebfaed;
+  --foreground: #404040;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: #58855C;
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -103,7 +103,7 @@ input:-webkit-autofill:active {
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: #262624;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);

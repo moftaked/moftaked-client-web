@@ -3,6 +3,9 @@ import type { Route } from "./+types/login";
 import api from "~/lib/api";
 import { AxiosError } from "axios";
 import { z } from "zod";
+import { Button } from "~/components/ui/button";
+import { ModeToggle } from "~/components/mode-toggle";
+import { Input } from "~/components/ui/input";
 
 const loginSchema = z.object({
   username: z.string()
@@ -70,16 +73,17 @@ export default function Login() {
   const actionState = useActionData<typeof clientAction>();
   return (
     <>
+      <ModeToggle className="absolute lg:top-0 lg:right-0 bottom-25" />
       <div className="h-full flex flex-col">
-        <p className="title py-6 h-fit text-center text-6xl select-none">
+        <h1 className="title py-6 h-fit text-center font-bold text-6xl select-none text-primary dark:text-foreground">
           مــفـــتــقــد
-        </p>
+        </h1>
         <div className="flex flex-col justify-center size-full">
           <div className="flex flex-col items-center justify-center">
             <Form className="flex flex-col gap-2.5 w-5/7 lg:w-3/7" method="post">
-              <input className="dark:bg-second lg:h-10 h-12 rounded-md p-2 shadow-lg" dir="auto" autoComplete="off" type="text" name="username" placeholder="اسم المستخدم" />
-              <input className="dark:bg-second lg:h-10 h-12 rounded-md p-2 shadow-lg" dir="auto" type="password" name="password" placeholder="الباسورد" />
-              <button type="submit">تسجيل الدخول</button>
+              <Input autoComplete="off" type="text" name="username" placeholder="اسم المستخدم" />
+              <Input type="password" name="password" placeholder="الباسورد" />
+              <Button type="submit">تسجيل الدخول</Button>
             </Form>
           </div>
           {actionState?.error &&

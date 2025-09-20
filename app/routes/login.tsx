@@ -77,9 +77,9 @@ export default function Login() {
         <div className="flex flex-col justify-center size-full">
           <div className="flex flex-col items-center justify-center">
             <Form className="flex flex-col gap-2.5 w-5/7 lg:w-3/7" method="post">
-              <input className="dark:bg-main text-main-comp lg:h-10 h-12 rounded-md p-2" dir="auto" autoComplete="off" type="text" name="username" placeholder="اسم المستخدم" />
-              <input className="dark:bg-main text-main-comp lg:h-10 h-12 rounded-md p-2" dir="auto" type="password" name="password" placeholder="الباسورد" />
-              <button className="dark:bg-main dark:text-main-comp lg:h-10 h-12 rounded-md p-2 text-xl" type="submit">تسجيل الدخول</button>
+              <input className="dark:bg-second lg:h-10 h-12 rounded-md p-2 shadow-lg" dir="auto" autoComplete="off" type="text" name="username" placeholder="اسم المستخدم" />
+              <input className="dark:bg-second lg:h-10 h-12 rounded-md p-2 shadow-lg" dir="auto" type="password" name="password" placeholder="الباسورد" />
+              <button type="submit">تسجيل الدخول</button>
             </Form>
           </div>
           {actionState?.error &&

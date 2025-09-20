@@ -3,12 +3,26 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --color-main: #F2FDFF;
-  --color-main-comp: #000000;
+  --color-main: #262624;
+  --color-main-comp: #faf9f5;
+  --color-second: #30302E;
+  --color-text: #FAF9F5;
 }
 
 html, body {
-  @apply font-[almarai-bold] bg-main dark:bg-black text-main-comp dark:text-white h-dvh;
+  @apply font-[almarai-bold] dark:bg-main dark:text-text h-dvh;
+}
+
+button {
+  @apply dark:bg-second lg:h-10 h-12 rounded-md p-2 text-xl shadow-lg py-0.5;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--color-second) inset !important;
+  -webkit-text-fill-color: var(--color-text) !important;
 }
 
 @font-face {

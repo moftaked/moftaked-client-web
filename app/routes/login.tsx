@@ -75,7 +75,7 @@ export default function Login() {
     <>
       <ModeToggle className="absolute lg:top-0 lg:right-0 bottom-25" />
       <div className="h-full flex flex-col">
-        <h1 className="title py-6 h-fit text-center font-bold text-6xl select-none text-primary dark:text-foreground">
+        <h1 className="title py-6 h-fit text-center font-bold text-6xl select-none text-primary dark:text-foreground font-[almarai]">
           مــفـــتــقــد
         </h1>
         <div className="flex flex-col justify-center size-full">

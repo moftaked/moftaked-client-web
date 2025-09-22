@@ -13,20 +13,18 @@
 }
 
 html, body {
-  @apply font-[almarai-regular] h-dvh;
-}
-
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px var(--color-background) inset !important;
-  -webkit-text-fill-color: var(--color-foreground) !important;
+  @apply font-[tajawal] h-dvh;
 }
 
 @font-face {
-  font-family: 'almarai-regular';
+  font-family: 'almarai';
   src: url('/fonts/Almarai/Almarai-Regular.ttf') format('truetype'),
+}
+
+@font-face {
+  font-family: 'tajawal';
+  src: url('/fonts/Tajawal/Tajawal-Regular.ttf') format('truetype');
+  ascent-override: 90%;
 }
 
 @theme inline {
@@ -115,7 +113,7 @@ input:-webkit-autofill:active {
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --accent: #4d4d4d;
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);

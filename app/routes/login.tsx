@@ -73,7 +73,7 @@ export default function Login() {
   const actionState = useActionData<typeof clientAction>();
   return (
     <>
-      <ModeToggle className="absolute lg:top-0 lg:right-0 bottom-25" />
+      <ModeToggle className="absolute lg:top-0 lg:right-0 bottom-25 lg:m-4 pl-2 pr-6 lg:px-1 rounded-r-none lg:rounded-md" />
       <div className="h-full flex flex-col">
         <h1 className="title py-6 h-fit text-center font-bold text-6xl select-none text-primary dark:text-foreground font-[almarai]">
           مــفـــتــقــد

@@ -16,6 +16,7 @@ import { ModeToggle } from "~/components/mode-toggle";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/utils";
 import { Logout } from "~/components/logout";
+import { SlidingContainer } from "~/components/sliding-container";
 import { useNavigation } from "~/contexts/navigation-context";
 
 export default function MainLayout() {
@@ -76,7 +77,9 @@ function BottomNavBarLayout() {
   return (
     <>
       <main className="pb-14">
-        <Outlet />
+        <SlidingContainer className="h-full">
+          <Outlet />
+        </SlidingContainer>
       </main>
       <div className="flex rtl:flex-row-reverse flex-row justify-between fixed bottom-0 left-0 right-0 w-dvw h-14 px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] bg-sidebar">
         {items.map((item) => (

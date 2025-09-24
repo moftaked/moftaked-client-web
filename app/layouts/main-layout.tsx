@@ -11,23 +11,23 @@ import {
   SidebarProvider,
   SidebarTrigger
 } from "~/components/ui/sidebar";
-import { HomeIcon, MenuIcon, type LucideProps } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ModeToggle } from "~/components/mode-toggle";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/utils";
 import { Logout } from "~/components/logout";
+import { useNavigation } from "~/contexts/navigation-context";
 
 export default function MainLayout() {
-  const items = [
-    { title: "البيت", url: "/", icon: HomeIcon },
-  ];
+  const navigation = useNavigation();
   const isMobile = useIsMobile();
 
-  return isMobile ? <BottomNavBarLayout items={items} /> : <SidebarLayout items={items} />;
+  return isMobile ? <BottomNavBarLayout /> : <SidebarLayout />;
 }
 
-function SidebarLayout({ items }: { items: { title: string, url: string, icon: React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>> }[] }) {
+function SidebarLayout() {
+  const navigation = useNavigation();
+  const items = navigation.getSidebarItems();
   const [opened, setOpened] = useState(localStorage.getItem("sidebar_state") === "true");
   useEffect(() => {
     localStorage.setItem("sidebar_state", opened ? "true" : "false");
@@ -70,8 +70,9 @@ function SidebarLayout({ items }: { items: { title: string, url: string, icon: R
   );
 }
 
-function BottomNavBarLayout({ items }: { items: { title: string, url: string, icon: React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>> }[] }) {
-  items = [...items, { title: "زيادات", url: "/more", icon: MenuIcon }];
+function BottomNavBarLayout() {
+  const navigation = useNavigation();
+  const items = navigation.getBottomNavItems();
   return (
     <>
       <main className="pb-14">

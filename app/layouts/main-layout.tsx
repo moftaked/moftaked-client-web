@@ -4,6 +4,7 @@ import { HomeIcon, LogOutIcon } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { ModeToggle } from "~/components/mode-toggle";
+import { Logout } from "~/components/logout";
 
 export default function _Sidebar() {
   const items = [
@@ -37,12 +38,7 @@ export default function _Sidebar() {
         <SidebarFooter>
           {opened ? (
           <div className="flex flex-row gap-3">
-            <Button className="grow" onClick={() => {
-              localStorage.removeItem('authToken');
-              window.location.reload();
-            }}>
-              <LogOutIcon />
-            </Button>
+              <Logout className="grow" />
             <ModeToggle />
           </div>) : <ModeToggle className="size-8" />
           }

@@ -16,6 +16,10 @@ html, body {
   @apply font-[tajawal] h-dvh;
 }
 
+html {
+  @apply bg-sidebar;
+}
+
 @font-face {
   font-family: 'almarai';
   src: url('/fonts/Almarai/Almarai-Regular.ttf') format('truetype'),

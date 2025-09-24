@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router";
+import { NavLink, Outlet, useNavigate } from "react-router";
 import {
   Sidebar,
   SidebarContent,
@@ -14,16 +14,22 @@ import {
 import { useEffect, useState } from "react";
 import { ModeToggle } from "~/components/mode-toggle";
 import { useIsMobile } from "~/hooks/use-mobile";
-import { cn } from "~/lib/utils";
+import { cn, isAuthenticated } from "~/lib/utils";
 import { Logout } from "~/components/logout";
 import { SlidingContainer } from "~/components/sliding-container";
 import { useNavigation } from "~/contexts/navigation-context";
 
 export default function MainLayout() {
-  const navigation = useNavigation();
   const isMobile = useIsMobile();
-
-  return isMobile ? <BottomNavBarLayout /> : <SidebarLayout />;
+  const navigate = useNavigate();
+  if (!isAuthenticated()) {
+    navigate('/login');
+  }
+  return (
+    <div className="px-4 py-8 md:px-2 md:py-2">
+      {isMobile ? <BottomNavBarLayout /> : <SidebarLayout />}
+    </div>
+  );
 }
 
 function SidebarLayout() {
@@ -63,7 +69,7 @@ function SidebarLayout() {
           }
         </SidebarFooter>
       </Sidebar>
-      <main className="p-3">
+      <main>
         <SidebarTrigger />
         <Outlet />
       </main>

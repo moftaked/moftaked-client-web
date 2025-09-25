@@ -26,7 +26,7 @@ export default function MainLayout() {
     navigate('/login');
   }
   return (
-    <div className="px-4 py-8 md:px-2 md:py-2">
+    <div className="px-6 py-15 md:px-2 md:py-2">
       {isMobile ? <BottomNavBarLayout /> : <SidebarLayout />}
     </div>
   );

@@ -150,7 +150,7 @@ html {
 @layer utilities {
   @keyframes slide-in-left {
     from {
-      transform: translateX(100%);
+      transform: translateX(200%);
     }
     to {
       transform: translateX(0);
@@ -159,7 +159,7 @@ html {
 
   @keyframes slide-in-right {
     from {
-      transform: translateX(-100%);
+      transform: translateX(-200%);
     }
     to {
       transform: translateX(0);
@@ -167,10 +167,10 @@ html {
   }
 
   .animate-slide-in-left {
-    animation: slide-in-left 0.3s ease-in-out;
+    animation: slide-in-left 0.5s ease-in-out;
   }
 
   .animate-slide-in-right {
-    animation: slide-in-right 0.3s ease-in-out;
+    animation: slide-in-right 0.5s ease-in-out;
   }
 }

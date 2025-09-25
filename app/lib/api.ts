@@ -1,11 +1,5 @@
 import axios from 'axios';
-import { useNavigate, type NavigateFunction } from 'react-router';
-
-let navigate: NavigateFunction | null = null;
-
-export const setNavigate = (navigateFunction: NavigateFunction) => {
-  navigate = navigateFunction;
-};
+import { redirect } from 'react-router';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -19,7 +13,7 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = token;
     }
     return config;
   },
@@ -34,9 +28,7 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      if (navigate) {
-        navigate('/login');
-      }
+      return Promise.reject(redirect('/login'));
     }
     return Promise.reject(error);
   }

@@ -13,7 +13,7 @@
 }
 
 html, body {
-  @apply font-[tajawal] h-dvh;
+  @apply font-[tajawal] h-dvh min-h-fit;
 }
 
 html {

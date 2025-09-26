@@ -167,10 +167,48 @@ html {
   }
 
   .animate-slide-in-left {
-    animation: slide-in-left 0.5s ease-in-out;
+    animation: slide-in-left 0.3s ease-in-out;
   }
 
   .animate-slide-in-right {
-    animation: slide-in-right 0.5s ease-in-out;
+    animation: slide-in-right 0.3s ease-in-out;
+  }
+
+  @keyframes ripple-spread {
+    0% {
+      transform: scale(0);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(20);
+      opacity: 0;
+    }
+  }
+
+  .ripple-effect {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ripple-effect::before {
+    content: '';
+    position: absolute;
+    top: var(--ripple-y, 50%);
+    left: var(--ripple-x, 50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%) scale(0);
+    transition: none;
+    pointer-events: none;
+  }
+
+  .ripple-effect.ripple-active::before {
+    animation: ripple-spread 0.6s ease-out;
+  }
+
+  .dark .ripple-effect::before {
+    background: rgba(255, 255, 255, 0.2);
   }
 }

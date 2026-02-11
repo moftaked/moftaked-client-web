@@ -21,6 +21,10 @@ export async function clientLoader() {
   return null;
 }
 
+export function HydrateFallback() {
+  return null;
+}
+
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const data = await request.formData();
   const formData = {
@@ -69,6 +73,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
+// todo: mode toggle not appearing on mobile screens, because of ripple effect. it makes the button position relative not absolute
 export default function Login() {
   const actionState = useActionData<typeof clientAction>();
   return (

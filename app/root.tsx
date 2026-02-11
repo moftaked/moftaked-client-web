@@ -6,11 +6,13 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
+import { useEffect } from "react";
 
 import type { Route } from "./+types/root";
 import "./app.css";
 import { ThemeProvider } from "./components/theme-provider";
 import { NavigationProvider } from "./contexts/navigation-context";
+import { Toaster } from "./components/ui/sonner";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -23,6 +25,8 @@ export const links: Route.LinksFunction = () => [
     rel: "stylesheet",
     href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
   },
+  { rel: "manifest", href: "/manifest.json" },
+  { rel: "apple-touch-icon", href: "/icons/icon-192x192.png" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -31,6 +35,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#09090b" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <Meta />
         <Links />
       </head>
@@ -44,10 +51,39 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      const registerPWA = () => {
+        import("virtual:pwa-register").then(({ registerSW }) => {
+          registerSW({ immediate: true });
+        }).catch(() => {
+          // SW registration not available or unsupported browser
+        });
+      };
+
+      if (import.meta.env.DEV) {
+        // In dev mode, clean up any stale production service workers
+        // (e.g. leftover sw.js from a previous production build)
+        // before registering the dev SW.
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          const stale = registrations.filter(
+            (r) => !r.active?.scriptURL?.includes("dev-sw")
+          );
+          return Promise.all(stale.map((r) => r.unregister()));
+        }).then(() => {
+          registerPWA();
+        });
+      } else {
+        registerPWA();
+      }
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <NavigationProvider>
         <Outlet />
+        <Toaster />
       </NavigationProvider>
     </ThemeProvider>
   );

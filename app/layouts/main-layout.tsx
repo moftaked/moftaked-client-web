@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
+import { SearchProvider } from "~/contexts/search-context";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +19,11 @@ import { cn, isAuthenticated } from "~/lib/utils";
 import { Logout } from "~/components/logout";
 import { SlidingContainer } from "~/components/sliding-container";
 import { useNavigation } from "~/contexts/navigation-context";
+import { AttendanceSyncProvider } from "~/components/attendance-sync-provider";
+import { prefetchAllData } from "~/lib/prefetch-data";
+import { toast } from "sonner";
+import { WifiOff, Wifi } from "lucide-react";
+import { GlobalSearchBar } from "~/components/global-search-bar";
 
 export default function MainLayout() {
   const isMobile = useIsMobile();
@@ -25,10 +31,56 @@ export default function MainLayout() {
   if (!isAuthenticated()) {
     navigate('/login');
   }
+
+  // Eagerly prefetch all API data in the background so every page works
+  // offline — even pages the user hasn't visited yet.
+  useEffect(() => {
+    prefetchAllData();
+  }, []);
+
+  // Show a sonner toast when the device goes offline / comes back online.
+  useEffect(() => {
+    function handleOffline() {
+      toast.error("لا يوجد اتصال بالإنترنت", {
+        id: "offline-toast",
+        duration: Infinity,
+        icon: <WifiOff className="size-5" />,
+        description: "سيتم استخدام البيانات المحفوظة مؤقتًا",
+      });
+    }
+
+    function handleOnline() {
+      toast.dismiss("offline-toast");
+      toast.success("تم استعادة الاتصال بالإنترنت", {
+        id: "online-toast",
+        duration: 3000,
+        icon: <Wifi className="size-5" />,
+      });
+      // Re-prefetch fresh data now that we're back online
+      prefetchAllData(true);
+    }
+
+    // Check current state on mount
+    if (!navigator.onLine) {
+      handleOffline();
+    }
+
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, []);
+
   return (
-    <div className="px-6 py-15 md:px-2 md:py-2">
-      {isMobile ? <BottomNavBarLayout /> : <SidebarLayout />}
-    </div>
+    <AttendanceSyncProvider>
+      <SearchProvider>
+        <div className="px-6 py-15 md:px-2 md:py-2">
+          {isMobile ? <BottomNavBarLayout /> : <SidebarLayout />}
+        </div>
+      </SearchProvider>
+    </AttendanceSyncProvider>
   );
 }
 
@@ -70,7 +122,10 @@ function SidebarLayout() {
         </SidebarFooter>
       </Sidebar>
       <main>
-        <SidebarTrigger />
+        <div className="flex items-center gap-2 mb-4">
+          <SidebarTrigger />
+          <GlobalSearchBar className="flex-1" />
+        </div>
         <Outlet />
       </main>
     </SidebarProvider>
@@ -83,11 +138,14 @@ function BottomNavBarLayout() {
   return (
     <>
       <main className="pb-14">
+        <div className="mb-4">
+          <GlobalSearchBar />
+        </div>
         <SlidingContainer className="h-full">
           <Outlet />
         </SlidingContainer>
       </main>
-      <div className="flex rtl:flex-row-reverse flex-row justify-between fixed bottom-0 left-0 right-0 w-dvw h-14 px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] bg-sidebar">
+      <div className="flex rtl:flex-row-reverse flex-row justify-between fixed bottom-0 left-0 right-0 w-dvw h-14 px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] bg-sidebar z-50">
         {items.map((item) => (
           <NavLink key={item.title} to={item.url} className="width-fit h-full pb-3 pt-1.5 block">
               {({ isActive }) => (

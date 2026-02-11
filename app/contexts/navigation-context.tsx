@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { HomeIcon, MenuIcon, type LucideProps } from "lucide-react";
+import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, type LucideProps } from "lucide-react";
 
 export interface NavigationItem {
   title: string;
@@ -21,6 +21,20 @@ const navigationItems: NavigationItem[] = [
     title: "البيت", 
     url: "/", 
     icon: HomeIcon,
+    showInSidebar: true,
+    showInBottomNav: true
+  },
+  { 
+    title: "الحضور", 
+    url: "/attendance", 
+    icon: CalendarCheck,
+    showInSidebar: true,
+    showInBottomNav: true
+  },
+  { 
+    title: "التقارير", 
+    url: "/reports", 
+    icon: BarChart3,
     showInSidebar: true,
     showInBottomNav: true
   },

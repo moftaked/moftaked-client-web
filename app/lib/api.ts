@@ -28,6 +28,7 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
+      localStorage.removeItem('authToken');
       return Promise.reject(redirect('/login'));
     }
     return Promise.reject(error);

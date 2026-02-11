@@ -5,5 +5,8 @@
 /.react-router/
 /build/
 
+# PWA dev service worker
+/dev-dist/
+
 .env
 .env.development

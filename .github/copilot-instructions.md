@@ -9,6 +9,7 @@ This is a modern React application built with **React Router 7** (not Remix), us
 - **Styling**: Tailwind CSS 4.x with custom Inter font theme
 - **Type System**: Strict TypeScript with path aliases (`~/*` → `./app/*`)
 - **Validation**: All user input validation uses Zod schemas exclusively
+- **UI Library**: chadcn for ui components
 - **Deployment**: Docker-based with multi-stage builds
 
 ## Key Patterns & Conventions

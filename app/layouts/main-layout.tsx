@@ -1,11 +1,13 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { SearchProvider } from "~/contexts/search-context";
+import { ReportsDateProvider } from "~/contexts/reports-date-context";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -76,9 +78,11 @@ export default function MainLayout() {
   return (
     <AttendanceSyncProvider>
       <SearchProvider>
-        <div className="px-6 py-15 md:px-2 md:py-2">
-          {isMobile ? <BottomNavBarLayout /> : <SidebarLayout />}
-        </div>
+        <ReportsDateProvider>
+          <div className="px-6 py-15 md:px-2 md:py-2">
+            {isMobile ? <BottomNavBarLayout /> : <SidebarLayout />}
+          </div>
+        </ReportsDateProvider>
       </SearchProvider>
     </AttendanceSyncProvider>
   );
@@ -121,13 +125,15 @@ function SidebarLayout() {
           }
         </SidebarFooter>
       </Sidebar>
-      <main>
+      <SidebarInset>
         <div className="flex items-center gap-2 mb-4">
           <SidebarTrigger />
-          <GlobalSearchBar className="flex-1" />
+          <div className="flex-1 flex justify-center">
+            <GlobalSearchBar className="w-full max-w-md" />
+          </div>
         </div>
         <Outlet />
-      </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }

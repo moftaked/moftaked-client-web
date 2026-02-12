@@ -13,6 +13,10 @@ export default [
     route("/reports/class/:classId/event/:eventId", "routes/reports-event.tsx"),
     route("/reports/person/:type/:personId", "routes/reports-person.tsx"),
     route("/more", "routes/more.tsx"),
+    route("/admin/accounts", "routes/admin-accounts.tsx"),
+    route("/admin/persons", "routes/admin-persons.tsx"),
+    route("/admin/classes", "routes/admin-classes.tsx"),
+    route("/admin/events", "routes/admin-events.tsx"),
   ]),
   route("/login", "routes/login.tsx"),
 ] satisfies RouteConfig;

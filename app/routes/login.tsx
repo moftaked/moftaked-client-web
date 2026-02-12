@@ -47,6 +47,9 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     const response = await api.post('/auth/login', { username, password });
     console.log(response);
     localStorage.setItem('authToken', response.data.data.access_token);
+    if (response.data.data.roles) {
+      localStorage.setItem('userRoles', response.data.data.roles);
+    }
     return redirect('/');
   } catch (error) {
     if (error instanceof AxiosError) {

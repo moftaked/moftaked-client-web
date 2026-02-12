@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router";
 import api from "~/lib/api";
+import { useReportsDate } from "~/contexts/reports-date-context";
 import type { Route } from "./+types/reports-class";
 import {
   Card,
@@ -177,12 +178,18 @@ export function HydrateFallback() {
 export default function ReportsClass({ loaderData }: Route.ComponentProps) {
   const { classId, role, availableDates, initialDate } = loaderData;
   const navigate = useNavigate();
+  const reportsDate = useReportsDate();
 
-  const [selectedDate, setSelectedDate] = useState(initialDate);
+  // Use context date if it exists in this class's available dates, otherwise fall back to loader's initialDate
+  const contextDateValid = !!reportsDate.selectedDate && availableDates.some((d) => d.date === reportsDate.selectedDate);
+  const resolvedInitialDate = contextDateValid ? reportsDate.selectedDate : initialDate;
+
+  const [selectedDate, setSelectedDateLocal] = useState(resolvedInitialDate);
   const [summary, setSummary] = useState<ClassSummaryData | null>(
+    // If context date differs from loader date, summary will be refetched in useEffect below
     loaderData.summary
   );
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(contextDateValid && reportsDate.selectedDate !== initialDate);
   const [activeTab, setActiveTab] = useState("overview");
   const [absentees, setAbsentees] = useState<Map<number, AbsenteesData>>(
     new Map()
@@ -196,6 +203,15 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
   const [chronicLoading, setChronicLoading] = useState(false);
 
   const isLeaderOrManager = role === "leader" || role === "manager";
+
+  // Sync selected date back to context
+  const setSelectedDate = useCallback(
+    (date: string) => {
+      setSelectedDateLocal(date);
+      reportsDate.setSelectedDate(date);
+    },
+    [reportsDate]
+  );
 
   // Fetch summary for a new date
   const fetchSummary = useCallback(
@@ -217,6 +233,15 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
     },
     [classId]
   );
+
+  // If the resolved initial date differs from what the loader fetched, re-fetch
+  const hasFetchedForContext = useRef(false);
+  useEffect(() => {
+    if (!hasFetchedForContext.current && resolvedInitialDate !== initialDate) {
+      hasFetchedForContext.current = true;
+      fetchSummary(resolvedInitialDate);
+    }
+  }, [resolvedInitialDate, initialDate, fetchSummary]);
 
   // Navigate dates
   const dateIndex = availableDates.findIndex((d) => d.date === selectedDate);

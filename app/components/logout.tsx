@@ -7,6 +7,7 @@ export function Logout({className}: {className?: string}) {
   return (
     <Button className={className} onClick={async () => {
       localStorage.removeItem('authToken');
+      localStorage.removeItem('userRoles');
       resetTimestampCache();
       await clearAllOfflineData();
       window.location.reload();

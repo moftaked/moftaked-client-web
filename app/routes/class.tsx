@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useRevalidator } from "react-router";
+import { useRevalidator, Link } from "react-router";
 import { useSearchFilter } from "~/contexts/search-context";
 import api from "~/lib/api";
 import type { Route } from "./+types/class";
@@ -7,6 +7,7 @@ import { fetchAndCache, resetTimestampCache } from "~/lib/sync-manager";
 import { Skeleton } from "~/components/ui/skeleton";
 import { cn } from "~/lib/utils";
 import { classStudentsKey, classTeachersKey, DISTRICTS_KEY, removeCached } from "~/lib/offline-db";
+import { PersonAvatar } from "~/components/person-avatar";
 import {
   Table,
   TableBody,
@@ -129,6 +130,7 @@ interface Student {
   student_id: number;
   student_name: string;
   address: string | null;
+  photo_link: string | null;
   phone_numbers: string | null;
   district: string | null;
   notes: string | null;
@@ -138,6 +140,7 @@ interface Teacher {
   teacher_id: number;
   teacher_name: string;
   address: string | null;
+  photo_link: string | null;
   phone_numbers: string | null;
   district: string | null;
   notes: string | null;
@@ -900,13 +903,16 @@ function PersonTable<T extends Student | Teacher>({
                 ? (person as Student).student_name
                 : (person as Teacher).teacher_name;
 
+            const personId =
+              type === "student"
+                ? (person as Student).student_id
+                : (person as Teacher).teacher_id;
+
+            const photoLink = person.photo_link;
+
             return (
               <TableRow
-                key={
-                  type === "student"
-                    ? (person as Student).student_id
-                    : (person as Teacher).teacher_id
-                }
+                key={personId}
               >
                 {showIndex && (
                   <TableCell frozen className="start-0 w-10">
@@ -915,7 +921,18 @@ function PersonTable<T extends Student | Teacher>({
                 )}
                 {showName && (
                   <TableCell frozen className={`${nameStartClass} font-medium`}>
-                    {name}
+                    <Link
+                      to={`/person/${type}/${personId}`}
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                    >
+                      <PersonAvatar
+                        photoLink={photoLink}
+                        name={name}
+                        size="sm"
+                        clickToView={false}
+                      />
+                      <span className="truncate">{name}</span>
+                    </Link>
                   </TableCell>
                 )}
                 {selectedColumns.has("district") && (

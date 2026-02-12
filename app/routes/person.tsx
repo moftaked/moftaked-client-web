@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Link } from "react-router";
 import api from "~/lib/api";
 import type { Route } from "./+types/person";
+import { getPhotoUrl } from "~/lib/utils";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
 import {
@@ -10,6 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
 import {
   User,
   Phone,
@@ -20,8 +26,12 @@ import {
   Loader2,
   ArrowRight,
   BookOpen,
+  Maximize,
+  ImageUp,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ImageCropper } from "~/components/image-cropper";
+import { PhotoViewer } from "~/components/photo-viewer";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,20 +103,38 @@ export function HydrateFallback() {
 export default function PersonPage({ loaderData }: Route.ComponentProps) {
   const { person, type, personId } = loaderData;
   const [photoLink, setPhotoLink] = useState(person.photo_link);
+  const [photoVersion, setPhotoVersion] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [cropperImageSrc, setCropperImageSrc] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const apiUrl = import.meta.env.VITE_API_URL ?? "";
   const typeLabel = type === "student" ? "مخدوم" : "خادم";
 
   const phones = person.phone_numbers
     ? person.phone_numbers.split(", ").filter(Boolean)
     : [];
 
+  // Build photo URLs with cache-busting version param
+  const rawMediumUrl = getPhotoUrl(photoLink, "md");
+  const rawLargeUrl = getPhotoUrl(photoLink, "lg");
+  const mediumPhotoUrl =
+    rawMediumUrl && photoLink
+      ? `${rawMediumUrl}${photoVersion ? `?v=${photoVersion}` : ""}`
+      : null;
+  const largePhotoUrl =
+    rawLargeUrl && photoLink
+      ? `${rawLargeUrl}${photoVersion ? `?v=${photoVersion}` : ""}`
+      : null;
+
+  const hasPhoto = !!mediumPhotoUrl;
+
   // --------------------------------------------------
-  // Photo upload handler
+  // File selection handler — opens the cropper
   // --------------------------------------------------
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -116,20 +144,47 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("حجم الصورة أكبر من 5 ميجابايت");
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("حجم الصورة أكبر من 10 ميجابايت");
       return;
     }
 
+    // Create object URL for the cropper
+    const objectUrl = URL.createObjectURL(file);
+    setCropperImageSrc(objectUrl);
+    setShowCropper(true);
+
+    // Reset file input so the same file can be re-selected
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  // --------------------------------------------------
+  // Trigger the hidden file input
+  // --------------------------------------------------
+  function triggerUpload() {
+    setPopoverOpen(false);
+    fileInputRef.current?.click();
+  }
+
+  // --------------------------------------------------
+  // Upload the cropped image
+  // --------------------------------------------------
+  async function handleCroppedImage(croppedBlob: Blob) {
+    setShowCropper(false);
     setUploading(true);
 
-    try {
-      // Convert to WebP using canvas for optimal size
-      const webpBlob = await convertToWebp(file);
+    // Clean up the object URL
+    if (cropperImageSrc) {
+      URL.revokeObjectURL(cropperImageSrc);
+      setCropperImageSrc(null);
+    }
 
+    try {
       const formData = new FormData();
-      formData.append("photo", webpBlob, "photo.webp");
+      formData.append("photo", croppedBlob, "photo.webp");
 
       const paramKey = type === "student" ? "students" : "teachers";
       const res = await api.post<{
@@ -140,16 +195,43 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
       });
 
       setPhotoLink(res.data.data.filename);
+      // Bump version to bust browser cache for the new image
+      setPhotoVersion((v) => v + 1);
       toast.success("تم رفع الصورة بنجاح");
     } catch {
       toast.error("حصلت مشكلة في رفع الصورة، حاول تاني");
     } finally {
       setUploading(false);
-      // Reset file input so the same file can be re-selected
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
+  }
+
+  // --------------------------------------------------
+  // Cancel cropper
+  // --------------------------------------------------
+  function handleCropperCancel() {
+    setShowCropper(false);
+    if (cropperImageSrc) {
+      URL.revokeObjectURL(cropperImageSrc);
+      setCropperImageSrc(null);
+    }
+  }
+
+  // --------------------------------------------------
+  // Open fullscreen viewer
+  // --------------------------------------------------
+  function openViewer() {
+    setPopoverOpen(false);
+    setViewerOpen(true);
+  }
+
+  // --------------------------------------------------
+  // Handle photo area click (no photo → upload, has photo → popover)
+  // --------------------------------------------------
+  function handlePhotoAreaClick() {
+    if (!hasPhoto) {
+      triggerUpload();
+    }
+    // When there IS a photo, the PopoverTrigger handles the click
   }
 
   return (
@@ -166,62 +248,108 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
       {/* Photo + Name Section */}
       <div className="flex flex-col items-center gap-4">
         {/* Photo */}
-        <div className="relative group">
-          <div className="size-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border shadow-md">
-            {photoLink ? (
-              <img
-                src={`${apiUrl}/uploads/images/${photoLink}`}
-                alt={person.person_name}
-                className="size-full object-cover"
-              />
-            ) : (
-              <User className="size-16 text-muted-foreground" />
-            )}
-          </div>
+        <div className="relative">
+          {hasPhoto ? (
+            /* --- HAS PHOTO: wrap in Popover for view / upload choice --- */
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="size-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border shadow-md cursor-pointer hover:ring-2 hover:ring-primary/40 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <img
+                    key={photoLink}
+                    src={mediumPhotoUrl!}
+                    alt={person.person_name}
+                    className="size-full object-cover"
+                  />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-1.5" align="center">
+                <div className="flex flex-col">
+                  <button
+                    type="button"
+                    onClick={openViewer}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors text-start"
+                  >
+                    <Maximize className="size-4 shrink-0" />
+                    عرض الصورة
+                  </button>
+                  <button
+                    type="button"
+                    onClick={triggerUpload}
+                    disabled={uploading}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors text-start disabled:opacity-50"
+                  >
+                    {uploading ? (
+                      <Loader2 className="size-4 shrink-0 animate-spin" />
+                    ) : (
+                      <ImageUp className="size-4 shrink-0" />
+                    )}
+                    تغيير الصورة
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          ) : (
+            /* --- NO PHOTO: click to upload directly --- */
+            <button
+              type="button"
+              onClick={handlePhotoAreaClick}
+              disabled={uploading}
+              className="size-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-dashed border-border shadow-md cursor-pointer hover:border-primary/60 hover:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait"
+            >
+              {uploading ? (
+                <Loader2 className="size-8 text-muted-foreground animate-spin" />
+              ) : (
+                <div className="flex flex-col items-center gap-1">
+                  <Camera className="size-8 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground">
+                    رفع صورة
+                  </span>
+                </div>
+              )}
+            </button>
+          )}
 
-          {/* Upload overlay */}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-wait"
-          >
-            {uploading ? (
+          {/* Uploading spinner overlay (when photo exists) */}
+          {uploading && hasPhoto && (
+            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center pointer-events-none">
               <Loader2 className="size-6 text-white animate-spin" />
-            ) : (
-              <Camera className="size-6 text-white" />
-            )}
-          </button>
+            </div>
+          )}
 
           <input
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            onChange={handlePhotoUpload}
+            onChange={handleFileSelect}
             className="hidden"
           />
         </div>
 
-        {/* Upload button for mobile (since hover isn't available) */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="md:hidden"
-        >
-          {uploading ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              جاري الرفع...
-            </>
-          ) : (
-            <>
-              <Camera className="size-4" />
-              {photoLink ? "تغيير الصورة" : "رفع صورة"}
-            </>
-          )}
-        </Button>
+        {/* Upload button for mobile (since popover is available, this is simpler) */}
+        {hasPhoto && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={triggerUpload}
+            disabled={uploading}
+            className="md:hidden"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                جاري الرفع...
+              </>
+            ) : (
+              <>
+                <Camera className="size-4" />
+                تغيير الصورة
+              </>
+            )}
+          </Button>
+        )}
 
         {/* Name + Type */}
         <div className="text-center">
@@ -314,6 +442,24 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Image Cropper Overlay */}
+      {showCropper && cropperImageSrc && (
+        <ImageCropper
+          imageSrc={cropperImageSrc}
+          onCropComplete={handleCroppedImage}
+          onCancel={handleCropperCancel}
+        />
+      )}
+
+      {/* Fullscreen Photo Viewer */}
+      {viewerOpen && largePhotoUrl && (
+        <PhotoViewer
+          src={largePhotoUrl}
+          alt={person.person_name}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -342,59 +488,4 @@ function InfoRow({
       </div>
     </div>
   );
-}
-
-// ---------------------------------------------------------------------------
-// WebP Conversion
-// ---------------------------------------------------------------------------
-
-function convertToWebp(file: File): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-
-      // Resize if too large (max 1200px on longest side)
-      const MAX_SIZE = 1200;
-      let { width, height } = img;
-      if (width > MAX_SIZE || height > MAX_SIZE) {
-        const ratio = Math.min(MAX_SIZE / width, MAX_SIZE / height);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Canvas 2D context not available"));
-        return;
-      }
-
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error("Failed to convert image to WebP"));
-          }
-        },
-        "image/webp",
-        0.82
-      );
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Failed to load image"));
-    };
-
-    img.src = url;
-  });
 }

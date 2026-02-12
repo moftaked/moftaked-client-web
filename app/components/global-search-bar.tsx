@@ -2,25 +2,28 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router";
 import { Search, X, Loader2, User } from "lucide-react";
 import { Input } from "~/components/ui/input";
-import { cn } from "~/lib/utils";
+import { cn, getPhotoUrl } from "~/lib/utils";
 import api from "~/lib/api";
 import { useSearchContext } from "~/contexts/search-context";
 
 interface StudentResult {
   person_id: number;
   person_name: string;
+  photo_link: string | null;
   classIds: string | null;
 }
 
 interface TeacherResult {
   person_id: number;
   person_name: string;
+  photo_link: string | null;
   classIds: string | null;
 }
 
 interface SearchResult {
   person_id: number;
   person_name: string;
+  photo_link: string | null;
   type: "student" | "teacher";
   classIds: string | null;
 }
@@ -138,6 +141,7 @@ function GlobalSearchMode({
           combined.push({
             person_id: s.person_id,
             person_name: s.person_name,
+            photo_link: s.photo_link,
             type: "student",
             classIds: s.classIds,
           });
@@ -151,6 +155,7 @@ function GlobalSearchMode({
           combined.push({
             person_id: t.person_id,
             person_name: t.person_name,
+            photo_link: t.photo_link,
             type: "teacher",
             classIds: t.classIds,
           });
@@ -326,7 +331,16 @@ function GlobalSearchMode({
                 )}
               >
                 <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                  <User className="size-5 text-muted-foreground" />
+                  {getPhotoUrl(person.photo_link, "md") ? (
+                    <img
+                      src={getPhotoUrl(person.photo_link, "md")!}
+                      alt={person.person_name}
+                      className="size-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <User className="size-5 text-muted-foreground" />
+                  )}
                 </div>
 
                 <div className="flex flex-col min-w-0 flex-1">

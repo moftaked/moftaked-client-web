@@ -137,11 +137,10 @@ export default function ReportsEvent({ loaderData }: Route.ComponentProps) {
   const { classId, studentData, teacherData } = loaderData;
   const navigate = useNavigate();
 
-  const hasTeacherData =
-    teacherData !== null && teacherData.occurrences.length > 0;
   const eventType = studentData.event_type;
 
-  const [activePersonType, setActivePersonType] = useState<string>("student");
+  const defaultPersonType = eventType === "teacher" ? "teacher" : "student";
+  const [activePersonType, setActivePersonType] = useState<string>(defaultPersonType);
   const [limit, setLimit] = useState<string>("15");
   const [customStudentData, setCustomStudentData] = useState<TrendsData>(studentData);
   const [customTeacherData, setCustomTeacherData] = useState<TrendsData | null>(teacherData);
@@ -160,7 +159,7 @@ export default function ReportsEvent({ loaderData }: Route.ComponentProps) {
         api.get<{ success: boolean; data: TrendsData }>(
           `/reports/event/${loaderData.eventId}/trends?type=student&limit=${newLimit}`
         ),
-        hasTeacherData
+        eventType !== "student"
           ? api.get<{ success: boolean; data: TrendsData }>(
               `/reports/event/${loaderData.eventId}/trends?type=teacher&limit=${newLimit}`
             )
@@ -203,7 +202,7 @@ export default function ReportsEvent({ loaderData }: Route.ComponentProps) {
 
       {/* Person type tabs + limit selector */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        {(eventType === "all" || hasTeacherData) && (
+        {eventType === "all" && (
           <Tabs
             value={activePersonType}
             onValueChange={setActivePersonType}
@@ -214,12 +213,10 @@ export default function ReportsEvent({ loaderData }: Route.ComponentProps) {
                 <GraduationCap className="size-4" />
                 مخدومين
               </TabsTrigger>
-              {hasTeacherData && (
-                <TabsTrigger value="teacher" className="text-xs sm:text-sm gap-1.5">
-                  <Users className="size-4" />
-                  خدام
-                </TabsTrigger>
-              )}
+              <TabsTrigger value="teacher" className="text-xs sm:text-sm gap-1.5">
+                <Users className="size-4" />
+                خدام
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         )}

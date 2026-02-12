@@ -60,6 +60,12 @@ const LAST_SYNC_CHECK_KEY = "lastSyncCheck";
  */
 const MIN_SYNC_INTERVAL_MS = 30_000;
 
+/**
+ * Minimum interval (ms) between retry attempts after a failed fetch.
+ * Prevents flooding the server with requests when it's down.
+ */
+const FAILURE_BACKOFF_MS = 30_000;
+
 // ---------------------------------------------------------------------------
 // In-memory timestamp cache (avoids hitting IndexedDB on every call)
 // ---------------------------------------------------------------------------
@@ -103,7 +109,9 @@ export async function fetchServerTimestamps(
   } catch (error) {
     // Let redirect responses (e.g. 401 → /login) propagate
     if (isRedirect(error)) throw error;
-    // Offline or server error — return whatever we had
+    // Offline or server error — cache the failure time so we don't retry
+    // on every single fetchAndCache call (prevents request flooding).
+    serverTimestampsFetchedAt = now - MIN_SYNC_INTERVAL_MS + FAILURE_BACKOFF_MS;
     return serverTimestamps;
   }
 }

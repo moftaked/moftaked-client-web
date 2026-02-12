@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router";
 import api from "~/lib/api";
 import type { Route } from "./+types/reports";
@@ -96,18 +96,16 @@ export async function clientLoader() {
   const [accessRes, datesRes] = await Promise.all([
     api.get<{ success: boolean; data: ReportsAccess }>("/reports/access"),
     api.get<{ success: boolean; data: AvailableDate[] }>(
-      "/reports/dates?limit=60"
+      "/reports/dates"
     ),
   ]);
 
   const access = accessRes.data.data;
   const availableDates = datesRes.data.data;
 
-  // Use the most recent available date, fall back to today
-  const initialDate =
-    availableDates.length > 0
-      ? availableDates[0]!.date
-      : new Date().toISOString().slice(0, 10);
+  // todo: display no data screen if no available dates
+  if (availableDates.length === 0) return;
+  const initialDate = availableDates[0]!.date;
 
   // Pre-fetch summaries for each class the user has access to
   const allClasses = new Map<number, ClassInfo>();
@@ -163,6 +161,15 @@ export function HydrateFallback() {
 // ---------------------------------------------------------------------------
 
 export default function Reports({ loaderData }: Route.ComponentProps) {
+  if(!loaderData) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <Calendar className="size-12 mb-4 opacity-30" />
+        <p className="text-base font-medium mb-1">لا يوجد بيانات حضور</p>
+        <p className="text-sm">لم يتم تسجيل أي حضور بعد</p>
+      </div>
+    )
+  }
   const { access, availableDates, initialDate } = loaderData;
 
   const [selectedDate, setSelectedDate] = useState(initialDate);
@@ -266,13 +273,6 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
       </div>
 
       {/* Date Picker */}
-      {availableDates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <Calendar className="size-12 mb-4 opacity-30" />
-          <p className="text-base font-medium mb-1">لا يوجد بيانات حضور</p>
-          <p className="text-sm">لم يتم تسجيل أي حضور بعد</p>
-        </div>
-      ) : (
         <>
           <div className="flex items-center gap-2">
             <Button
@@ -349,14 +349,34 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
                 title="الفصول (خادم / مشرف)"
                 description="تقارير تفصيلية للفصول التي تشرف عليها"
               />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {access.leaderClasses.map((cls) => (
-                  <ClassReportCard
-                    key={`leader-${cls.class_id}`}
-                    cls={cls}
-                    summary={summaryMap.get(cls.class_id)}
-                    isLeader
-                  />
+              <div className="flex flex-col gap-6">
+                {Object.entries(
+                  access.leaderClasses.reduce<Record<string, ClassInfo[]>>(
+                    (acc, cls) => {
+                      (acc[cls.school_name] ??= []).push(cls);
+                      return acc;
+                    },
+                    {}
+                  )
+                ).map(([schoolName, classes]) => (
+                  <div key={schoolName} className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <School className="size-4 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        {schoolName}
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {classes.map((cls) => (
+                        <ClassReportCard
+                          key={`leader-${cls.class_id}`}
+                          cls={cls}
+                          summary={summaryMap.get(cls.class_id)}
+                          isLeader
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </section>
@@ -370,20 +390,155 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
                 title="الفصول (خادم)"
                 description="تقارير حضور المخدومين في فصولك"
               />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {access.teacherClasses.map((cls) => (
-                  <ClassReportCard
-                    key={`teacher-${cls.class_id}`}
-                    cls={cls}
-                    summary={summaryMap.get(cls.class_id)}
-                    isLeader={false}
-                  />
+              <div className="flex flex-col gap-6">
+                {Object.entries(
+                  access.teacherClasses.reduce<Record<string, ClassInfo[]>>(
+                    (acc, cls) => {
+                      (acc[cls.school_name] ??= []).push(cls);
+                      return acc;
+                    },
+                    {}
+                  )
+                ).map(([schoolName, classes]) => (
+                  <div key={schoolName} className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <School className="size-4 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        {schoolName}
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {classes.map((cls) => (
+                        <ClassReportCard
+                          key={`teacher-${cls.class_id}`}
+                          cls={cls}
+                          summary={summaryMap.get(cls.class_id)}
+                          isLeader={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </section>
           )}
         </>
-      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared Helpers, Hooks & Selectors
+// ---------------------------------------------------------------------------
+
+const personTypeLabels: Record<string, string> = {
+  student: "المخدومين",
+  teacher: "الخدام",
+};
+
+function personTypeLabel(type: string) {
+  return personTypeLabels[type] ?? type;
+}
+
+function useEventNameFilter(events: { event_name: string }[]) {
+  const [selectedEventName, setSelectedEventName] = useState<string>("");
+
+  const availableEventNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const ev of events) names.add(ev.event_name);
+    return Array.from(names);
+  }, [events]);
+
+  // Serialize to detect actual changes in the list of names
+  const namesKey = availableEventNames.join("\0");
+
+  useEffect(() => {
+    if (availableEventNames.length > 0) {
+      setSelectedEventName(availableEventNames[0]);
+    } else {
+      setSelectedEventName("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [namesKey]);
+
+  return { availableEventNames, selectedEventName, setSelectedEventName };
+}
+
+function EventNameSelector({
+  availableEventNames,
+  selectedEventName,
+  onValueChange,
+}: {
+  availableEventNames: string[];
+  selectedEventName: string;
+  onValueChange: (name: string) => void;
+}) {
+  if (availableEventNames.length === 0) return null;
+  return (
+    <div className="pt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+      <Select value={selectedEventName} onValueChange={onValueChange}>
+        <SelectTrigger className="w-full h-8 text-xs">
+          <SelectValue placeholder="اختر الحدث" />
+        </SelectTrigger>
+        <SelectContent>
+          {availableEventNames.map((name) => (
+            <SelectItem key={name} value={name}>
+              {name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function usePersonTypeFilter(breakdowns: { person_type: string }[]) {
+  const [selectedPersonType, setSelectedPersonType] = useState<string>("");
+
+  const availablePersonTypes = useMemo(() => {
+    const types = new Set<string>();
+    for (const b of breakdowns) types.add(b.person_type);
+    return Array.from(types);
+  }, [breakdowns]);
+
+  const typesKey = availablePersonTypes.join("\0");
+
+  useEffect(() => {
+    if (availablePersonTypes.length > 0) {
+      setSelectedPersonType(availablePersonTypes[0]);
+    } else {
+      setSelectedPersonType("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typesKey]);
+
+  return { availablePersonTypes, selectedPersonType, setSelectedPersonType };
+}
+
+function PersonTypeSelector({
+  availablePersonTypes,
+  selectedPersonType,
+  onValueChange,
+}: {
+  availablePersonTypes: string[];
+  selectedPersonType: string;
+  onValueChange: (type: string) => void;
+}) {
+  if (availablePersonTypes.length === 0) return null;
+  return (
+    <div className="pt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+      <Select value={selectedPersonType} onValueChange={onValueChange}>
+        <SelectTrigger className="w-full h-8 text-xs">
+          <SelectValue placeholder="اختر النوع" />
+        </SelectTrigger>
+        <SelectContent>
+          {availablePersonTypes.map((type) => (
+            <SelectItem key={type} value={type}>
+              {personTypeLabel(type)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -456,37 +611,65 @@ function ManagerSchoolCard({
     };
   }, [school.school_id, selectedDate]);
 
-  const totalStudents = comparison
-    ? comparison.classes.reduce((sum, cls) => {
-        return (
-          sum +
-          cls.events.reduce((eSum, ev) => {
-            const studentBreakdown = ev.breakdown.find(
-              (b) => b.person_type === "student"
-            );
-            return eSum + (studentBreakdown?.total ?? 0);
-          }, 0)
-        );
-      }, 0)
-    : 0;
+  const allEvents = useMemo(
+    () => comparison?.classes.flatMap((c) => c.events) ?? [],
+    [comparison]
+  );
 
-  const attendedStudents = comparison
-    ? comparison.classes.reduce((sum, cls) => {
-        return (
-          sum +
-          cls.events.reduce((eSum, ev) => {
-            const studentBreakdown = ev.breakdown.find(
-              (b) => b.person_type === "student"
-            );
-            return eSum + (studentBreakdown?.attended ?? 0);
-          }, 0)
+  const { availableEventNames, selectedEventName, setSelectedEventName } =
+    useEventNameFilter(allEvents);
+
+  // Collect all breakdowns from filtered events for person type filter
+  const allBreakdowns = useMemo(
+    () =>
+      (comparison?.classes ?? [])
+        .flatMap((c) => c.events)
+        .filter((ev) => ev.event_name === selectedEventName)
+        .flatMap((ev) => ev.breakdown),
+    [comparison, selectedEventName]
+  );
+
+  const { availablePersonTypes, selectedPersonType, setSelectedPersonType } =
+    usePersonTypeFilter(allBreakdowns);
+
+  // Filter classes/events based on selected event name
+  const filteredClasses = useMemo(() => {
+    if (!comparison || !selectedEventName) return [];
+    return comparison.classes
+      .map((cls) => ({
+        ...cls,
+        events: cls.events.filter((ev) => ev.event_name === selectedEventName),
+      }))
+      .filter((cls) => cls.events.length > 0);
+  }, [comparison, selectedEventName]);
+
+  const totalPersons = filteredClasses.reduce((sum, cls) => {
+    return (
+      sum +
+      cls.events.reduce((eSum, ev) => {
+        const bd = ev.breakdown.find(
+          (b) => b.person_type === selectedPersonType
         );
+        return eSum + (bd?.total ?? 0);
       }, 0)
-    : 0;
+    );
+  }, 0);
+
+  const attendedPersons = filteredClasses.reduce((sum, cls) => {
+    return (
+      sum +
+      cls.events.reduce((eSum, ev) => {
+        const bd = ev.breakdown.find(
+          (b) => b.person_type === selectedPersonType
+        );
+        return eSum + (bd?.attended ?? 0);
+      }, 0)
+    );
+  }, 0);
 
   const overallRate =
-    totalStudents > 0
-      ? Math.round((attendedStudents / totalStudents) * 100)
+    totalPersons > 0
+      ? Math.round((attendedPersons / totalPersons) * 100)
       : 0;
 
   return (
@@ -497,10 +680,21 @@ function ManagerSchoolCard({
             <School className="size-5 text-primary" />
             <CardTitle className="text-base">{school.school_name}</CardTitle>
           </div>
-          <Badge variant="secondary" className="text-xs">
-            مدير
-          </Badge>
         </div>
+        {!loading && (
+          <>
+            <EventNameSelector
+              availableEventNames={availableEventNames}
+              selectedEventName={selectedEventName}
+              onValueChange={setSelectedEventName}
+            />
+            <PersonTypeSelector
+              availablePersonTypes={availablePersonTypes}
+              selectedPersonType={selectedPersonType}
+              onValueChange={setSelectedPersonType}
+            />
+          </>
+        )}
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -509,42 +703,46 @@ function ManagerSchoolCard({
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
           </div>
-        ) : comparison && comparison.classes.length > 0 ? (
+        ) : comparison && filteredClasses.length > 0 ? (
           <div className="flex flex-col gap-3">
             {/* Overall quick stat */}
             <div className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
               <span className="text-sm text-muted-foreground">
-                حضور المخدومين
+                حضور {personTypeLabel(selectedPersonType)}
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold">
-                  {attendedStudents}/{totalStudents}
+                  {attendedPersons}/{totalPersons}
                 </span>
                 <RateBadge rate={overallRate} />
               </div>
             </div>
 
-            {/* Per-class mini list */}
+            {/* Per-class mini list (sorted by attendance rate) */}
             <div className="flex flex-col gap-1.5">
-              {comparison.classes.slice(0, 4).map((cls) => {
-                const studentTotal = cls.events.reduce((s, e) => {
-                  const bd = e.breakdown.find(
-                    (b) => b.person_type === "student"
-                  );
-                  return s + (bd?.total ?? 0);
-                }, 0);
-                const studentAttended = cls.events.reduce((s, e) => {
-                  const bd = e.breakdown.find(
-                    (b) => b.person_type === "student"
-                  );
-                  return s + (bd?.attended ?? 0);
-                }, 0);
-                const rate =
-                  studentTotal > 0
-                    ? Math.round((studentAttended / studentTotal) * 100)
-                    : 0;
-
-                return (
+              {filteredClasses
+                .map((cls) => {
+                  const clsTotal = cls.events.reduce((s, e) => {
+                    const bd = e.breakdown.find(
+                      (b) => b.person_type === selectedPersonType
+                    );
+                    return s + (bd?.total ?? 0);
+                  }, 0);
+                  const clsAttended = cls.events.reduce((s, e) => {
+                    const bd = e.breakdown.find(
+                      (b) => b.person_type === selectedPersonType
+                    );
+                    return s + (bd?.attended ?? 0);
+                  }, 0);
+                  const rate =
+                    clsTotal > 0
+                      ? Math.round((clsAttended / clsTotal) * 100)
+                      : 0;
+                  return { ...cls, rate };
+                })
+                .sort((a, b) => b.rate - a.rate)
+                .slice(0, 4)
+                .map((cls) => (
                   <Link
                     key={cls.class_id}
                     to={`/reports/class/${cls.class_id}`}
@@ -552,19 +750,18 @@ function ManagerSchoolCard({
                   >
                     <span className="truncate">{cls.class_name}</span>
                     <div className="flex items-center gap-2 shrink-0">
-                      <MiniBar rate={rate} />
+                      <MiniBar rate={cls.rate} />
                       <span className="text-xs text-muted-foreground w-8 text-left">
-                        {rate}%
+                        {cls.rate}%
                       </span>
                     </div>
                   </Link>
-                );
-              })}
+                ))}
             </div>
 
-            {comparison.classes.length > 4 && (
+            {filteredClasses.length > 4 && (
               <p className="text-xs text-muted-foreground text-center">
-                + {comparison.classes.length - 4} فصول أخرى
+                + {filteredClasses.length - 4} فصول أخرى
               </p>
             )}
           </div>
@@ -591,12 +788,20 @@ function ClassReportCard({
   summary?: ClassSummaryData;
   isLeader: boolean;
 }) {
-  // Calculate total attendance from summary
-  const studentBreakdowns = summary
-    ? summary.events.flatMap((e) =>
-        e.breakdown.filter((b) => b.person_type === "student")
-      )
-    : [];
+  const allEvents = useMemo(() => summary?.events ?? [], [summary]);
+
+  const { availableEventNames, selectedEventName, setSelectedEventName } =
+    useEventNameFilter(allEvents);
+
+  const filteredEvents = useMemo(() => {
+    if (!selectedEventName) return [];
+    return allEvents.filter((ev) => ev.event_name === selectedEventName);
+  }, [allEvents, selectedEventName]);
+
+  // Calculate total attendance from filtered events
+  const studentBreakdowns = filteredEvents.flatMap((e) =>
+    e.breakdown.filter((b) => b.person_type === "student")
+  );
 
   const totalStudents = studentBreakdowns.reduce((s, b) => s + b.total, 0);
   const attendedStudents = studentBreakdowns.reduce(
@@ -609,8 +814,8 @@ function ClassReportCard({
       : 0;
 
   const teacherBreakdowns =
-    isLeader && summary
-      ? summary.events.flatMap((e) =>
+    isLeader
+      ? filteredEvents.flatMap((e) =>
           e.breakdown.filter((b) => b.person_type === "teacher")
         )
       : [];
@@ -625,23 +830,30 @@ function ClassReportCard({
       : 0;
 
   return (
-    <Link to={`/reports/class/${cls.class_id}`}>
-      <Card className="overflow-hidden hover:border-primary/30 transition-colors cursor-pointer group">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">{cls.class_name}</CardTitle>
-              <CardDescription className="text-xs">
-                {cls.school_name}
-              </CardDescription>
-            </div>
-            <ChevronLeft className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+    <Card className="overflow-hidden hover:border-primary/30 transition-colors group">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base">{cls.class_name}</CardTitle>
+            <CardDescription className="text-xs">
+              {cls.school_name}
+            </CardDescription>
           </div>
-        </CardHeader>
-        <CardContent>
-          {summary && summary.events.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {/* Student stats */}
+          <Link to={`/reports/class/${cls.class_id}`}>
+            <ChevronLeft className="size-5 text-muted-foreground hover:text-primary transition-colors" />
+          </Link>
+        </div>
+        <EventNameSelector
+          availableEventNames={availableEventNames}
+          selectedEventName={selectedEventName}
+          onValueChange={setSelectedEventName}
+        />
+      </CardHeader>
+      <CardContent>
+        {summary && filteredEvents.length > 0 ? (
+          <Link to={`/reports/class/${cls.class_id}`} className="flex flex-col gap-3">
+            {/* Student stats */}
+            {totalStudents > 0 && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <GraduationCap className="size-4 text-muted-foreground" />
@@ -654,57 +866,33 @@ function ClassReportCard({
                   <RateBadge rate={studentRate} />
                 </div>
               </div>
+            )}
 
-              {/* Teacher stats (leader only) */}
-              {isLeader && totalTeachers > 0 && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Users className="size-4 text-muted-foreground" />
-                    <span className="text-sm">الخدام</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">
-                      {attendedTeachers}/{totalTeachers}
-                    </span>
-                    <RateBadge rate={teacherRate} />
-                  </div>
+            {/* Teacher stats (leader only) */}
+            {isLeader && totalTeachers > 0 && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Users className="size-4 text-muted-foreground" />
+                  <span className="text-sm">الخدام</span>
                 </div>
-              )}
-
-              {/* Per-event mini bars */}
-              <div className="flex flex-col gap-1.5 mt-1">
-                {summary.events.map((event) => {
-                  const studentBd = event.breakdown.find(
-                    (b) => b.person_type === "student"
-                  );
-                  const rate = studentBd?.rate ?? 0;
-                  return (
-                    <div
-                      key={event.event_id}
-                      className="flex items-center justify-between text-xs"
-                    >
-                      <span className="truncate text-muted-foreground">
-                        {event.event_name}
-                      </span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <MiniBar rate={rate} />
-                        <span className="w-8 text-left text-muted-foreground">
-                          {event.has_occurrence ? `${rate}%` : "—"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">
+                    {attendedTeachers}/{totalTeachers}
+                  </span>
+                  <RateBadge rate={teacherRate} />
+                </div>
               </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              لا يوجد بيانات حضور في هذا التاريخ
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </Link>
+            )}
+
+
+          </Link>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            لا يوجد بيانات حضور في هذا التاريخ
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

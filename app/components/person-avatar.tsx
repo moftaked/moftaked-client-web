@@ -18,6 +18,8 @@ interface PersonAvatarProps {
   size?: AvatarSize;
   /** Whether clicking the avatar opens a fullscreen viewer with the large photo */
   clickToView?: boolean;
+  /** Optional version to bust the browser cache when the photo changes */
+  version?: number | string;
   /** Additional class names for the outer wrapper */
   className?: string;
 }
@@ -84,14 +86,19 @@ export function PersonAvatar({
   name,
   size = "md",
   clickToView = false,
+  version,
   className,
 }: PersonAvatarProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
 
   const config = SIZE_CONFIG[size];
-  const photoUrl = getPhotoUrl(photoLink, config.photoSize);
+  const rawPhotoUrl = getPhotoUrl(photoLink, config.photoSize);
   const largePhotoUrl = getPhotoUrl(photoLink, "lg");
+  const photoUrl =
+    rawPhotoUrl && version
+      ? `${rawPhotoUrl}${version ? `?v=${version}` : ""}`
+      : rawPhotoUrl;
   const hasPhoto = !!photoUrl && !imgError;
 
   const isClickable = clickToView && !!largePhotoUrl && hasPhoto;

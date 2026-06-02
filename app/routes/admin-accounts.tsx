@@ -128,8 +128,8 @@ export function HydrateFallback() {
 // ---------------------------------------------------------------------------
 
 const ROLE_LABELS: Record<string, string> = {
-  manager: "مدير",
-  leader: "قائد",
+  manager: "أدمن",
+  leader: "ليدر",
   teacher: "خادم",
 };
 
@@ -683,8 +683,8 @@ function AssignRoleSheet({
                 className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-primary border-primary h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-lg transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
               >
                 <option value="teacher">خادم</option>
-                <option value="leader">قائد</option>
-                <option value="manager">مدير</option>
+                <option value="leader">ليدر</option>
+                <option value="manager">أدمن</option>
               </select>
             </div>
 

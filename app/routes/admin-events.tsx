@@ -191,7 +191,7 @@ export default function AdminEvents({ loaderData }: Route.ComponentProps) {
       unique.sort((a, b) => a.event_id - b.event_id);
       setEvents(unique);
     } catch {
-      toast.error("حصلت مشكلة في تحميل الأحداث");
+      toast.error("حصلت مشكلة في تحميل الغياب");
       setEvents([]);
     } finally {
       setLoadingEvents(false);
@@ -226,7 +226,7 @@ export default function AdminEvents({ loaderData }: Route.ComponentProps) {
         >
           <ArrowRight className="size-4" />
         </Link>
-        <h1 className="text-xl font-bold flex-1">إدارة الأحداث</h1>
+        <h1 className="text-xl font-bold flex-1">إدارة الغياب</h1>
       </div>
 
       {/* Class picker */}
@@ -239,7 +239,7 @@ export default function AdminEvents({ loaderData }: Route.ComponentProps) {
               onValueChange={(val) => setSelectedClassId(parseInt(val, 10))}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="اختر فصل لعرض أحداثه..." />
+                <SelectValue placeholder="اختر فصل لعرض غيابه..." />
               </SelectTrigger>
               <SelectContent>
                 {[...schoolMap.entries()].map(([schoolName, schoolClasses]) => (
@@ -270,7 +270,7 @@ export default function AdminEvents({ loaderData }: Route.ComponentProps) {
             <h2 className="text-sm font-semibold text-muted-foreground flex-1">
               {loadingEvents
                 ? "جاري التحميل..."
-                : `أحداث "${selectedClass?.class_name ?? ""}" (${events.length})`}
+                : `غياب "${selectedClass?.class_name ?? ""}" (${events.length})`}
             </h2>
             <Button
               size="sm"
@@ -290,7 +290,7 @@ export default function AdminEvents({ loaderData }: Route.ComponentProps) {
             </div>
           ) : events.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              لا يوجد أحداث في هذا الفصل
+              لا يوجد غياب في هذا الفصل
             </p>
           ) : (
             <div className="flex flex-col gap-3">

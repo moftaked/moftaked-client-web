@@ -715,7 +715,7 @@ function DataToolbar({
         onClick={handleExportCsv}
       >
         <Download className="size-3.5" />
-        CSV
+        تحميل
       </Button>
     </div>
   );
@@ -801,10 +801,12 @@ function PersonTable<T extends Student | Teacher>({
   type,
   persons,
   onEdit,
+  avatarVersion,
 }: {
   type: "student" | "teacher";
   persons: T[];
   onEdit: (person: T) => void;
+  avatarVersion: number;
 }) {
   const [selectedColumns, setSelectedColumns] = useState<Set<string>>(
     () => new Set(ALL_COLUMN_KEYS)
@@ -930,6 +932,7 @@ function PersonTable<T extends Student | Teacher>({
                         name={name}
                         size="sm"
                         clickToView={false}
+                        version={avatarVersion}
                       />
                       <span className="truncate">{name}</span>
                     </Link>
@@ -976,6 +979,7 @@ export default function Class({ loaderData }: Route.ComponentProps) {
   const { classId, students, teachers, districts } = loaderData;
   const revalidator = useRevalidator();
   const filterText = useSearchFilter();
+  const [avatarVersion, setAvatarVersion] = useState(1);
 
   const filteredStudents = useMemo(() => {
     const q = filterText.trim().toLowerCase();
@@ -1009,6 +1013,8 @@ export default function Class({ loaderData }: Route.ComponentProps) {
   }
 
   async function handleSuccess() {
+    // Bump version to bust browser cache for avatar images
+    setAvatarVersion((v) => v + 1);
     // Invalidate cached data so revalidation fetches fresh from API
     resetTimestampCache();
     await Promise.all([
@@ -1030,7 +1036,7 @@ export default function Class({ loaderData }: Route.ComponentProps) {
             {filterText.trim() ? "لا يوجد نتائج" : "لا يوجد مخدومين في هذا الفصل"}
           </p>
         ) : (
-          <PersonTable type="student" persons={filteredStudents} onEdit={openEditStudent} />
+          <PersonTable type="student" persons={filteredStudents} onEdit={openEditStudent} avatarVersion={avatarVersion} />
         )}
       </CollapsibleSection>
 
@@ -1045,7 +1051,7 @@ export default function Class({ loaderData }: Route.ComponentProps) {
               {filterText.trim() ? "لا يوجد نتائج" : "لا يوجد خدام في هذا الفصل"}
             </p>
           ) : (
-            <PersonTable type="teacher" persons={filteredTeachers} onEdit={openEditTeacher} />
+            <PersonTable type="teacher" persons={filteredTeachers} onEdit={openEditTeacher} avatarVersion={avatarVersion} />
           )}
         </CollapsibleSection>
       )}

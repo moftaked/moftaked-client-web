@@ -32,7 +32,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     password: data.get('password') as string,
   };
   
-  const validation = z.safeParse(loginSchema, formData);
+  const validation = loginSchema.safeParse(formData);
   
   if (!validation.success) {
     return {
@@ -55,14 +55,11 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     if (error instanceof AxiosError) {
       let message = 'حصلت مشكلة غير متوقعة، كلم توني جورج';
       switch (error.status) {
-        case 404: 
-          message = 'اسم المستخدم مش موجود';
-          break;
         case 400:
           message = "يا سيدي الفاضل اكتب بياناتك فوق عشان تخش جوا";
           break;
         case 401:
-          message = 'الباسورد غلط';
+          message = 'اسم المستخدم أو الباسورد غلط';
           break;
         case 429:
           message = 'هدي اعصابك براحة خالص استنى شوية وحاول تاني';
@@ -90,7 +87,7 @@ export default function Login() {
           <div className="flex flex-col items-center justify-center">
             <Form className="flex flex-col gap-2.5 w-5/7 lg:w-3/7" method="post">
               <Input autoComplete="off" type="text" name="username" placeholder="اسم المستخدم" />
-              <Input type="password" name="password" placeholder="الباسورد" />
+              <Input autoComplete="current-password" type="password" name="password" placeholder="الباسورد" />
               <Button type="submit">تسجيل الدخول</Button>
             </Form>
           </div>

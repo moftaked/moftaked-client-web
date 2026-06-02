@@ -28,13 +28,13 @@ export default function More() {
           <Button variant="outline" className="justify-start" asChild>
             <Link to="/admin/classes">
               <School className="size-4" />
-              إدارة المدارس والفصول
+              إدارة الخدمات والفصول
             </Link>
           </Button>
           <Button variant="outline" className="justify-start" asChild>
             <Link to="/admin/events">
               <CalendarDays className="size-4" />
-              إدارة الأحداث
+              إدارة الغياب
             </Link>
           </Button>
         </div>

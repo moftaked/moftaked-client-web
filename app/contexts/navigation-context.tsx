@@ -66,7 +66,7 @@ const navigationItems: NavigationItem[] = [
     adminOnly: true,
   },
   { 
-    title: "الأحداث", 
+    title: "إدارة الغياب", 
     url: "/admin/events", 
     icon: CalendarDays,
     showInSidebar: true,

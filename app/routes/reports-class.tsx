@@ -1,5 +1,6 @@
+import axios from "axios";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, redirect } from "react-router";
 import api from "~/lib/api";
 import { useReportsDate } from "~/contexts/reports-date-context";
 import type { Route } from "./+types/reports-class";
@@ -116,29 +117,39 @@ interface ChronicAbsentee {
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const classId = params.classId;
 
-  // Fetch available dates first (only dates that have event occurrences)
-  const datesRes = await api.get<{ success: boolean; data: AvailableDate[] }>(
-    `/reports/class/${classId}/dates?limit=60`
-  );
-  const availableDates = datesRes.data.data;
+  let availableDates: AvailableDate[] = [];
+  let summary: ClassSummaryData | null = null;
+  let role = "teacher";
 
-  // Use the most recent available date, fall back to today if none exist
+  try {
+    const datesRes = await api.get<{ success: boolean; data: AvailableDate[] }>(
+      `/reports/class/${classId}/dates?limit=60`
+    );
+    availableDates = datesRes.data.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err) && err.response?.status === 403) {
+      throw redirect("/reports");
+    }
+    throw err;
+  }
+
   const initialDate =
     availableDates.length > 0
       ? availableDates[0]!.date
       : new Date().toISOString().slice(0, 10);
 
-  // Only fetch summary if there is a valid date with occurrences
-  let summary: ClassSummaryData | null = null;
-  let role = "teacher";
   if (availableDates.length > 0) {
-    const summaryRes = await api.get<{
-      success: boolean;
-      data: ClassSummaryData;
-      role: string;
-    }>(`/reports/class/${classId}/summary?date=${initialDate}`);
-    summary = summaryRes.data.data;
-    role = summaryRes.data.role;
+    try {
+      const summaryRes = await api.get<{
+        success: boolean;
+        data: ClassSummaryData;
+        role: string;
+      }>(`/reports/class/${classId}/summary?date=${initialDate}`);
+      summary = summaryRes.data.data;
+      role = summaryRes.data.role;
+    } catch {
+      // keep summary as null
+    }
   }
 
   return {
@@ -471,7 +482,7 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
                 {/* ---- Overview Tab ---- */}
                 <TabsContent value="overview" className="mt-4">
                   {summary.events.length === 0 ? (
-                    <EmptyState message="لا يوجد أحداث في هذا التاريخ" />
+                    <EmptyState message="لا يوجد غياب في هذا التاريخ" />
                   ) : (
                     <div className="flex flex-col gap-4">
                       {summary.events.map((event) => (
@@ -490,7 +501,7 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
                 {isLeaderOrManager && (
                   <TabsContent value="absentees" className="mt-4">
                     {summary.events.length === 0 ? (
-                      <EmptyState message="لا يوجد أحداث في هذا التاريخ" />
+                      <EmptyState message="لا يوجد غياب في هذا التاريخ" />
                     ) : (
                       <div className="flex flex-col gap-4">
                         {summary.events.map((event) => (

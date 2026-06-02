@@ -326,8 +326,8 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
             <section>
               <SectionHeader
                 icon={Building2}
-                title="إدارة المدارس"
-                description="نظرة عامة على المدارس التي تديرها"
+                title="إدارة الخدمات"
+                description="نظرة عامة على الخدمات التي تديرها"
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {access.managedSchools.map((school) => (

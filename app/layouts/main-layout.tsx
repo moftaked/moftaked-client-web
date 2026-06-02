@@ -36,8 +36,12 @@ export default function MainLayout() {
 
   // Eagerly prefetch all API data in the background so every page works
   // offline — even pages the user hasn't visited yet.
+  // Only run when the user is authenticated to avoid 401 errors on
+  // /sync/timestamps before the login redirect completes.
   useEffect(() => {
-    prefetchAllData();
+    if (isAuthenticated()) {
+      prefetchAllData();
+    }
   }, []);
 
   // Show a sonner toast when the device goes offline / comes back online.

@@ -140,10 +140,10 @@ export default function AdminClasses({ loaderData }: Route.ComponentProps) {
     setDeletingSchoolId(schoolId);
     try {
       await api.delete(`/classes/schools/${schoolId}`);
-      toast.success("تم حذف المدرسة");
+      toast.success("تم حذف الخدمة");
       refresh();
     } catch {
-      toast.error("حصلت مشكلة في حذف المدرسة");
+      toast.error("حصلت مشكلة في حذف الخدمة");
     } finally {
       setDeletingSchoolId(null);
     }
@@ -172,20 +172,20 @@ export default function AdminClasses({ loaderData }: Route.ComponentProps) {
         >
           <ArrowRight className="size-4" />
         </Link>
-        <h1 className="text-xl font-bold flex-1">إدارة المدارس والفصول</h1>
+        <h1 className="text-xl font-bold flex-1">إدارة الخدمات والفصول</h1>
         <Button
           size="sm"
           onClick={() => setSheetMode({ type: "create-school" })}
         >
           <Plus className="size-4" />
-          مدرسة جديدة
+          خدمة جديدة
         </Button>
       </div>
 
       {/* Schools list */}
       {schools.length === 0 ? (
         <p className="text-muted-foreground text-center py-8">
-          لا يوجد مدارس بعد
+          لا يوجد خدمات بعد
         </p>
       ) : (
         <div className="flex flex-col gap-5">
@@ -225,10 +225,10 @@ export default function AdminClasses({ loaderData }: Route.ComponentProps) {
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>
-                            حذف مدرسة "{school.school_name}"؟
+                            حذف خدمة "{school.school_name}"؟
                           </AlertDialogTitle>
                           <AlertDialogDescription>
-                            سيتم حذف المدرسة وجميع الفصول والأحداث والأدوار
+                            سيتم حذف الخدمة وجميع الفصول والغياب والأدوار
                             المرتبطة بها. هذا الإجراء لا يمكن التراجع عنه.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -255,7 +255,7 @@ export default function AdminClasses({ loaderData }: Route.ComponentProps) {
                 <CardContent className="flex flex-col gap-2">
                   {schoolClasses.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-2">
-                      لا يوجد فصول في هذه المدرسة
+                      لا يوجد فصول في هذه الخدمة
                     </p>
                   ) : (
                     schoolClasses.map((cls) => (
@@ -293,8 +293,8 @@ export default function AdminClasses({ loaderData }: Route.ComponentProps) {
                                 حذف فصل "{cls.class_name}"؟
                               </AlertDialogTitle>
                               <AlertDialogDescription>
-                                سيتم حذف الفصل وجميع الأحداث والأدوار
-                                والتعيينات المرتبطة به. هذا الإجراء لا يمكن
+                                سيتم حذف الفصل والغياب والأدوار
+                                 المرتبطة به. هذا الإجراء لا يمكن
                                 التراجع عنه.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
@@ -405,7 +405,7 @@ function SchoolSheet({
   async function handleSubmit() {
     const trimmed = name.trim();
     if (!trimmed || trimmed.length < 2) {
-      setApiError("اسم المدرسة يجب أن يكون حرفين على الأقل");
+      setApiError("اسم الخدمة يجب أن يكون حرفين على الأقل");
       return;
     }
 
@@ -415,12 +415,12 @@ function SchoolSheet({
     try {
       if (mode === "create") {
         await api.post("/classes/schools", { school_name: trimmed });
-        toast.success("تم إنشاء المدرسة");
+        toast.success("تم إنشاء الخدمة");
       } else if (mode === "edit" && school) {
         await api.put(`/classes/schools/${school.school_id}`, {
           school_name: trimmed,
         });
-        toast.success("تم تعديل المدرسة");
+        toast.success("تم تعديل الخدمة");
       }
       onSuccess();
     } catch {
@@ -436,18 +436,18 @@ function SchoolSheet({
         <SheetHeader>
           <SheetTitle>
             <School className="size-5 inline-block ml-2" />
-            {mode === "create" ? "إنشاء مدرسة جديدة" : "تعديل المدرسة"}
+            {mode === "create" ? "إنشاء خدمة جديدة" : "تعديل الخدمة"}
           </SheetTitle>
           <SheetDescription>
             {mode === "create"
-              ? "أدخل اسم المدرسة الجديدة"
-              : "عدّل اسم المدرسة"}
+              ? "أدخل اسم الخدمة الجديدة"
+              : "عدّل اسم الخدمة"}
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-4 px-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">اسم المدرسة</label>
+            <label className="text-sm font-medium">اسم الخدمة</label>
             <Input
               placeholder="مثال: خدمة ابتدائي"
               value={name}
@@ -475,7 +475,7 @@ function SchoolSheet({
                 جاري الحفظ...
               </>
             ) : mode === "create" ? (
-              "إنشاء المدرسة"
+              "إنشاء الخدمة"
             ) : (
               "حفظ التعديل"
             )}

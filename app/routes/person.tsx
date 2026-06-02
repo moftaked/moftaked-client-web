@@ -32,6 +32,12 @@ import {
 import { toast } from "sonner";
 import { ImageCropper } from "~/components/image-cropper";
 import { PhotoViewer } from "~/components/photo-viewer";
+import { resetTimestampCache } from "~/lib/sync-manager";
+import {
+  classStudentsKey,
+  classTeachersKey,
+  removeCached,
+} from "~/lib/offline-db";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -197,6 +203,20 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
       setPhotoLink(res.data.data.filename);
       // Bump version to bust browser cache for the new image
       setPhotoVersion((v) => v + 1);
+
+      // Invalidate class-level caches so the table view re-fetches the
+      // updated photo_link instead of showing the stale cached value.
+      resetTimestampCache();
+      await Promise.all(
+        person.classes.map((cls) => {
+          const key =
+            cls.type === "student"
+              ? classStudentsKey(cls.class_id)
+              : classTeachersKey(cls.class_id);
+          return removeCached(key);
+        })
+      );
+
       toast.success("تم رفع الصورة بنجاح");
     } catch {
       toast.error("حصلت مشكلة في رفع الصورة، حاول تاني");

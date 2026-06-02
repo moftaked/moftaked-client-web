@@ -14,7 +14,7 @@ export type ClassInfo = {
 export type SchoolWithClasses = {
   school_id: number;
   school_name: string;
-  role?: 'manager' | 'leader' | 'teacher';
+  role?: 'admin' | 'manager' | 'leader' | 'teacher';
   classes: ClassInfo[];
 };
 

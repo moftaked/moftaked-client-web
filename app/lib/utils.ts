@@ -38,17 +38,24 @@ export function getUserRoles(): UserRole[] {
 }
 
 /**
- * Whether the current user holds the "manager" role in any class.
+ * Whether the current user holds the "admin" role in any class.
+ */
+export function isAdmin(): boolean {
+  return getUserRoles().some((r) => r.role === "admin");
+}
+
+/**
+ * Whether the current user holds the "manager" role (or admin) in any class.
  */
 export function isManager(): boolean {
-  return getUserRoles().some((r) => r.role === "manager");
+  return getUserRoles().some((r) => r.role === "manager" || r.role === "admin");
 }
 
 /**
  * Whether the current user holds the "leader" role (or higher) in any class.
  */
 export function isLeaderOrAbove(): boolean {
-  return getUserRoles().some((r) => r.role === "leader" || r.role === "manager");
+  return getUserRoles().some((r) => r.role === "leader" || r.role === "manager" || r.role === "admin");
 }
 
 // ---------------------------------------------------------------------------

@@ -213,7 +213,7 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
   >(null);
   const [chronicLoading, setChronicLoading] = useState(false);
 
-  const isLeaderOrManager = role === "leader" || role === "manager";
+  const isLeaderOrManager = role === "leader" || role === "manager" || role === "admin";
 
   // Sync selected date back to context
   const setSelectedDate = useCallback(

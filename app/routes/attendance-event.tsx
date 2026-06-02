@@ -63,7 +63,7 @@ interface EventsData {
   teacherEvents: Event[];
 }
 
-type UserRole = "teacher" | "leader" | "manager";
+type UserRole = "teacher" | "leader" | "manager" | "admin";
 
 interface Occurrence {
   event_occurence_id: number;
@@ -183,7 +183,7 @@ export default function AttendanceEvent({
 
   const navigate = useNavigate();
   const filterText = useSearchFilter();
-  const isAdmin = role === "leader" || role === "manager";
+  const isAdmin = role === "leader" || role === "manager" || role === "admin";
 
   const defaultTab = hasStudents ? "student" : "teacher";
   const [activeTab, setActiveTab] = useState<"student" | "teacher">(defaultTab);

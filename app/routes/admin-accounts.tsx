@@ -128,6 +128,7 @@ export function HydrateFallback() {
 // ---------------------------------------------------------------------------
 
 const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
   manager: "أدمن",
   leader: "ليدر",
   teacher: "خادم",
@@ -135,6 +136,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 function roleBadgeVariant(role: string): "default" | "secondary" | "outline" {
   switch (role) {
+    case "admin":
     case "manager":
       return "default";
     case "leader":
@@ -685,6 +687,7 @@ function AssignRoleSheet({
                 <option value="teacher">خادم</option>
                 <option value="leader">ليدر</option>
                 <option value="manager">أدمن</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
 

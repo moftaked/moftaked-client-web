@@ -26,7 +26,7 @@ interface EventsData {
   teacherEvents: Event[];
 }
 
-type UserRole = "teacher" | "leader" | "manager";
+type UserRole = "teacher" | "leader" | "manager" | "admin";
 
 // ---------------------------------------------------------------------------
 // Loader
@@ -83,7 +83,7 @@ export function HydrateFallback() {
 
 export default function AttendanceClass({ loaderData }: Route.ComponentProps) {
   const { classId, studentEvents, teacherEvents, role } = loaderData;
-  const isAdmin = role === "leader" || role === "manager";
+  const isAdmin = role === "leader" || role === "manager" || role === "admin";
 
   const allEvents = new Map<number, Event>();
   for (const e of studentEvents) allEvents.set(e.event_id, e);

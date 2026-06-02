@@ -107,7 +107,7 @@ export default function Attendance({ loaderData }: Route.ComponentProps) {
   const { schools } = loaderData;
 
   const isSchoolAdmin = (school: SchoolWithClasses) =>
-    school.role === "leader" || school.role === "manager";
+    school.role === "leader" || school.role === "manager" || school.role === "admin";
 
   // If there's only one school and the user is admin, show a top-level new day button
   const singleSchool = schools.length === 1 ? schools[0] : null;

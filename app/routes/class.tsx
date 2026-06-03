@@ -5,7 +5,7 @@ import api from "~/lib/api";
 import type { Route } from "./+types/class";
 import { fetchAndCache, resetTimestampCache } from "~/lib/sync-manager";
 import { Skeleton } from "~/components/ui/skeleton";
-import { cn } from "~/lib/utils";
+import { cn, isManager } from "~/lib/utils";
 import { classStudentsKey, classTeachersKey, DISTRICTS_KEY, removeCached } from "~/lib/offline-db";
 import { PersonAvatar } from "~/components/person-avatar";
 import {
@@ -324,6 +324,30 @@ function PersonFormSheet({
   const [deleting, setDeleting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Add district
+  const [showAddDistrict, setShowAddDistrict] = useState(false);
+  const [newDistrictName, setNewDistrictName] = useState("");
+  const [addingDistrict, setAddingDistrict] = useState(false);
+  const revalidator = useRevalidator();
+
+  async function handleAddDistrict() {
+    const name = newDistrictName.trim();
+    if (!name || name.length < 2) return;
+    setAddingDistrict(true);
+    try {
+      await api.post("/districts", { name });
+      setNewDistrictName("");
+      setShowAddDistrict(false);
+      resetTimestampCache();
+      await removeCached(DISTRICTS_KEY);
+      revalidator.revalidate();
+    } catch {
+      // silently fail
+    } finally {
+      setAddingDistrict(false);
+    }
+  }
+
   // Reset form when sheet state changes
   const [prevState, setPrevState] = useState(sheetState);
   if (sheetState !== prevState) {
@@ -500,20 +524,63 @@ function PersonFormSheet({
 
           {/* District */}
           <FormField label="المنطقة" error={errors.district_id}>
-            <select
-              value={form.district_id}
-              onChange={(e) =>
-                updateField("district_id", e.target.value ? parseInt(e.target.value) : "")
-              }
-              className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-primary border-primary h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-lg font-light shadow-lg transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-            >
-              <option value="">اختر المنطقة</option>
-              {districts.map((d) => (
-                <option key={d.district_id} value={d.district_id}>
-                  {d.district_name}
-                </option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select
+                value={form.district_id}
+                onChange={(e) =>
+                  updateField("district_id", e.target.value ? parseInt(e.target.value) : "")
+                }
+                className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-primary border-primary h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-lg font-light shadow-lg transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              >
+                <option value="">اختر المنطقة</option>
+                {districts.map((d) => (
+                  <option key={d.district_id} value={d.district_id}>
+                    {d.district_name}
+                  </option>
+                ))}
+              </select>
+              {isManager() && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => setShowAddDistrict(true)}
+                >
+                  <Plus className="size-4" />
+                </Button>
+              )}
+            </div>
+            {showAddDistrict && (
+              <div className="flex gap-2 mt-2">
+                <Input
+                  value={newDistrictName}
+                  onChange={(e) => setNewDistrictName(e.target.value)}
+                  placeholder="اسم المنطقة الجديدة"
+                  className="grow"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleAddDistrict}
+                  disabled={addingDistrict || newDistrictName.trim().length < 2}
+                >
+                  {addingDistrict ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "إضافة"
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowAddDistrict(false);
+                    setNewDistrictName("");
+                  }}
+                >
+                  إلغاء
+                </Button>
+              </div>
+            )}
           </FormField>
 
           {/* Notes */}

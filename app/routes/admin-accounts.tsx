@@ -376,6 +376,10 @@ function CreateAccountSheet({
       setApiError("الاسم الحقيقي مطلوب");
       return;
     }
+    if (password.trim() && password.trim().length < 6) {
+      setApiError("كلمة المرور يجب أن تكون ٦ أحرف على الأقل");
+      return;
+    }
 
     setSubmitting(true);
     setApiError(null);
@@ -396,6 +400,9 @@ function CreateAccountSheet({
     } catch (err: any) {
       if (err?.response?.status === 409 || err?.response?.data?.message?.includes?.("Duplicate")) {
         setApiError("اسم المستخدم موجود بالفعل");
+      } else if (err?.response?.data?.message) {
+        const msg = err.response.data.message;
+        setApiError(Array.isArray(msg) ? msg.join("، ") : msg);
       } else {
         setApiError("حصلت مشكلة، حاول تاني");
       }

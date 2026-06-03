@@ -89,7 +89,7 @@ export default function Login() {
         </h1>
         <div className="flex flex-col justify-center size-full">
           <div className="flex flex-col items-center justify-center">
-            <Form className="flex flex-col gap-2.5 w-5/7 lg:w-3/7" method="post">
+            <Form className="flex flex-col gap-2.5 w-5/7 lg:w-3/7 login-form" method="post">
               <Input autoComplete="off" type="text" name="username" placeholder="اسم المستخدم" disabled={isSubmitting} />
               <Input autoComplete="current-password" type="password" name="password" placeholder="الباسورد" disabled={isSubmitting} />
               <Button type="submit" loading={isSubmitting}>تسجيل الدخول</Button>
@@ -105,7 +105,7 @@ export default function Login() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 w-full text-center py-6">
+      <div className="fixed bottom-0 w-full text-center py-6 login-footer">
         تم تطويره بواسطة توني جورج خادم كنيسة الشهيد العظيم مارجرجس بدمنهور 2024-2025
       </div>
     </>

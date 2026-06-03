@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import api from "~/lib/api";
+import { toast } from "sonner";
 import type { Route } from "./+types/attendance-class";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -110,8 +111,13 @@ export default function AttendanceClass({ loaderData }: Route.ComponentProps) {
       );
       // Force a page reload to reflect new occurrences
       window.location.reload();
-    } catch {
+    } catch (error: any) {
       setCreatingDay(false);
+      if (error?.response?.status === 409) {
+        toast.error("هذا اليوم مضاف بالفعل!");
+      } else {
+        toast.error("حدث خطأ أثناء إضافة يوم جديد");
+      }
     }
   }
 

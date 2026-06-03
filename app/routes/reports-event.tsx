@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useGoBack } from "~/hooks/use-go-back";
 import api from "~/lib/api";
 import type { Route } from "./+types/reports-event";
 import {
@@ -8,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { BackButton } from "~/components/ui/back-button";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Badge } from "~/components/ui/badge";
@@ -136,6 +138,7 @@ export function HydrateFallback() {
 export default function ReportsEvent({ loaderData }: Route.ComponentProps) {
   const { classId, studentData, teacherData } = loaderData;
   const navigate = useNavigate();
+  const goBack = useGoBack(`/reports/class/${classId}`);
 
   const eventType = studentData.event_type;
 
@@ -182,14 +185,7 @@ export default function ReportsEvent({ loaderData }: Route.ComponentProps) {
     <div className="flex flex-col gap-5">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="shrink-0"
-          onClick={() => navigate(`/reports/class/${classId}`)}
-        >
-          <ArrowRight className="size-5" />
-        </Button>
+        <BackButton onClick={goBack} />
         <div className="min-w-0">
           <h1 className="text-xl font-bold truncate">
             {currentData.event_name}

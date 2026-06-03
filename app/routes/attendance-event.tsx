@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { useGoBack } from "~/hooks/use-go-back";
 import { useSearchFilter } from "~/contexts/search-context";
 import api from "~/lib/api";
 import type { Route } from "./+types/attendance-event";
-import { BackButton } from "~/components/ui/back-button";
 import { Button } from "~/components/ui/button";
 import {
   Loader2,
@@ -184,7 +182,6 @@ export default function AttendanceEvent({
   } = loaderData;
 
   const navigate = useNavigate();
-  const goBack = useGoBack(`/attendance/${classId}`);
   const filterText = useSearchFilter();
   const isAdmin = role === "leader" || role === "manager" || role === "admin";
 
@@ -220,7 +217,6 @@ export default function AttendanceEvent({
     <div className="flex flex-col gap-4">
       {/* Header with back button and delete */}
       <div className="flex items-center gap-3">
-        <BackButton onClick={goBack} />
         <div className="flex flex-col grow">
           <h1 className="text-xl font-bold">{eventName}</h1>
           {latestOccurrence && (

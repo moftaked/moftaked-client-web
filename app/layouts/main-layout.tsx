@@ -1,6 +1,8 @@
-import { NavLink, Outlet, useNavigate, useNavigation as useRRNavigation } from "react-router";
+import { NavLink, Outlet, useNavigate, useLocation, useNavigation as useRRNavigation } from "react-router";
 import { SearchProvider } from "~/contexts/search-context";
 import { Skeleton } from "~/components/ui/skeleton";
+import { BackButton } from "~/components/ui/back-button";
+import { useGoBack } from "~/hooks/use-go-back";
 import { ReportsDateProvider } from "~/contexts/reports-date-context";
 import {
   Sidebar,
@@ -94,6 +96,9 @@ export default function MainLayout() {
 }
 
 function SidebarLayout() {
+  const location = useLocation();
+  const goBack = useGoBack();
+  const showBackButton = location.pathname !== "/";
   const navigation = useNavigation();
   const items = navigation.getSidebarItems();
   const [pinned, setPinned] = useState(localStorage.getItem("sidebar_state") === "true");
@@ -162,6 +167,7 @@ function SidebarLayout() {
       <SidebarInset>
         <div className="flex items-center gap-2 mb-4">
           <SidebarTrigger />
+          {showBackButton && <BackButton onClick={goBack} />}
           <div className="flex-1 flex justify-center">
             <GlobalSearchBar className="w-full max-w-md" />
           </div>
@@ -173,6 +179,9 @@ function SidebarLayout() {
 }
 
 function BottomNavBarLayout() {
+  const location = useLocation();
+  const goBack = useGoBack();
+  const showBackButton = location.pathname !== "/";
   const navigation = useNavigation();
   const items = navigation.getBottomNavItems();
   const isPageLoading = useRRNavigation().state === "loading";
@@ -180,8 +189,11 @@ function BottomNavBarLayout() {
   return (
     <>
       <main className="pb-14">
-        <div className="mb-4">
-          <GlobalSearchBar />
+        <div className="flex items-center gap-3 mb-4">
+          {showBackButton && <BackButton onClick={goBack} />}
+          <div className="flex-1">
+            <GlobalSearchBar />
+          </div>
         </div>
         <SlidingContainer className="h-full">
           {isPageLoading ? <NavigationSkeleton /> : <Outlet />}

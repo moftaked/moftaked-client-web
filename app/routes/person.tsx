@@ -4,7 +4,6 @@ import api from "~/lib/api";
 import type { Route } from "./+types/person";
 import { getPhotoUrl } from "~/lib/utils";
 import { Skeleton } from "~/components/ui/skeleton";
-import { BackButton } from "~/components/ui/back-button";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -25,7 +24,6 @@ import {
   Map,
   Camera,
   Loader2,
-  ChevronRight,
   BookOpen,
   Maximize,
   ImageUp,
@@ -257,14 +255,6 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="flex flex-col gap-6 max-w-lg mx-auto pb-8">
-      {/* Back button */}
-      <BackButton asChild>
-        <Link to={-1 as any} className="mb-2">
-          <ChevronRight className="size-6 shrink-0 stroke-[2.5]" />
-          <span className="font-medium text-base leading-none pb-0.5">رجوع</span>
-        </Link>
-      </BackButton>
-
       {/* Photo + Name Section */}
       <div className="flex flex-col items-center gap-4">
         {/* Photo */}

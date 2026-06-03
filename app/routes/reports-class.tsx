@@ -1,7 +1,6 @@
 import axios from "axios";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate, redirect } from "react-router";
-import { useGoBack } from "~/hooks/use-go-back";
 import api from "~/lib/api";
 import { useReportsDate } from "~/contexts/reports-date-context";
 import type { Route } from "./+types/reports-class";
@@ -12,7 +11,6 @@ import {
   CardTitle,
   CardDescription,
 } from "~/components/ui/card";
-import { BackButton } from "~/components/ui/back-button";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Badge } from "~/components/ui/badge";
@@ -191,7 +189,6 @@ export function HydrateFallback() {
 export default function ReportsClass({ loaderData }: Route.ComponentProps) {
   const { classId, role, availableDates, initialDate } = loaderData;
   const navigate = useNavigate();
-  const goBack = useGoBack("/reports");
   const reportsDate = useReportsDate();
 
   // Use context date if it exists in this class's available dates, otherwise fall back to loader's initialDate
@@ -360,7 +357,6 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
     <div className="flex flex-col gap-5">
       {/* Header with back nav */}
       <div className="flex items-center gap-2">
-        <BackButton onClick={goBack} />
         <div className="min-w-0">
           <h1 className="text-xl font-bold truncate">
             تقرير {summary?.class_name ?? "الفصل"}

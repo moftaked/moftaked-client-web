@@ -213,6 +213,7 @@ export default function AdminAccounts({ loaderData }: Route.ComponentProps) {
               key={account.account_id}
               account={account}
               onAssignRole={() => setSheetMode({ type: "assign-role", account })}
+              onDelete={refreshAccounts}
             />
           ))}
         </div>
@@ -250,25 +251,61 @@ export default function AdminAccounts({ loaderData }: Route.ComponentProps) {
 function AccountCard({
   account,
   onAssignRole,
+  onDelete,
 }: {
   account: Account;
   onAssignRole: () => void;
+  onDelete: () => void;
 }) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-1 min-w-0">
-            <span className="font-semibold text-base truncate">{account.real_name}</span>
-            <span className="text-sm text-muted-foreground font-mono" dir="ltr">
-              @{account.username}
-            </span>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="font-semibold text-base truncate">{account.real_name}</span>
+              <span className="text-sm text-muted-foreground font-mono" dir="ltr">
+                @{account.username}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="size-8 text-destructive hover:text-destructive">
+                    <Trash2 className="size-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>حذف الحساب</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      هل أنت متأكد من حذف حساب "{account.real_name}" (@{account.username})؟ هذا الإجراء لا يمكن التراجع عنه.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async () => {
+                        try {
+                          await api.delete(`/accounts/${account.account_id}`);
+                          onDelete();
+                          toast.success("تم حذف الحساب بنجاح");
+                        } catch {
+                          toast.error("حصلت مشكلة في حذف الحساب");
+                        }
+                      }}
+                    >
+                      حذف
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button variant="outline" size="sm" onClick={onAssignRole}>
+                <ShieldCheck className="size-4" />
+                أدوار
+              </Button>
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={onAssignRole}>
-            <ShieldCheck className="size-4" />
-            أدوار
-          </Button>
-        </div>
 
         {/* Roles */}
         <div className="flex flex-wrap gap-1.5">

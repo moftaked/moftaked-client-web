@@ -14,7 +14,7 @@ import {
   SidebarProvider,
   SidebarTrigger
 } from "~/components/ui/sidebar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ModeToggle } from "~/components/mode-toggle";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { cn, isAuthenticated } from "~/lib/utils";
@@ -95,13 +95,42 @@ export default function MainLayout() {
 function SidebarLayout() {
   const navigation = useNavigation();
   const items = navigation.getSidebarItems();
-  const [opened, setOpened] = useState(localStorage.getItem("sidebar_state") === "true");
+  const [pinned, setPinned] = useState(localStorage.getItem("sidebar_state") === "true");
+  const [hovering, setHovering] = useState(false);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
   useEffect(() => {
-    localStorage.setItem("sidebar_state", opened ? "true" : "false");
-  }, [opened]);
+    localStorage.setItem("sidebar_state", pinned ? "true" : "false");
+  }, [pinned]);
+
+  const open = pinned || hovering;
+
+  function handleOpenChange() {
+    setPinned(prev => !prev);
+  }
+
+  function handleMouseEnter() {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = undefined;
+    }
+    if (!pinned) setHovering(true);
+  }
+
+  function handleMouseLeave() {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHovering(false);
+    }, 300);
+  }
+
   return (
-    <SidebarProvider open={opened} onOpenChange={setOpened}>
-      <Sidebar side="right" collapsible="icon">
+    <SidebarProvider open={open} onOpenChange={handleOpenChange}>
+      <Sidebar
+        side="right"
+        collapsible="icon"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupContent>
@@ -121,7 +150,7 @@ function SidebarLayout() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          {opened ? (
+          {open ? (
             <div className="flex flex-row gap-3">
               <Logout className="grow" />
               <ModeToggle />

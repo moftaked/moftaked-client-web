@@ -5,6 +5,17 @@ import { fetchAndCache, forceFetchAndCache, resetTimestampCache } from "~/lib/sy
 import { CLASSES_KEY, classEventsKey, eventOccurrencesKey, removeCached } from "~/lib/offline-db";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { ClassPicker, type SchoolWithClasses } from "~/components/class-picker";
 import { CalendarPlus, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -49,17 +60,15 @@ export function HydrateFallback() {
 function NewDayButton({ school }: { school: SchoolWithClasses }) {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
 
-  async function handleNewDay(e: React.MouseEvent) {
-    // Prevent the click from propagating to any parent Link
-    e.preventDefault();
-    e.stopPropagation();
-
+  async function handleNewDay(dateStr: string) {
     setLoading(true);
     try {
       const res = await api.post<{ success: boolean; eventIds: number[] }>(
         "/events/occurrences/school",
-        { schoolId: school.school_id }
+        { schoolId: school.school_id, date: dateStr }
       );
 
       // Invalidate occurrence caches so downstream pages load fresh data
@@ -91,22 +100,67 @@ function NewDayButton({ school }: { school: SchoolWithClasses }) {
   }
 
   return (
-    <Button
-      size="sm"
-      variant="outline"
-      className="gap-1.5 shrink-0"
-      disabled={loading || done}
-      onClick={handleNewDay}
-    >
-      {loading ? (
-        <Loader2 className="size-4 animate-spin" />
-      ) : done ? (
-        <Check className="size-4" />
-      ) : (
-        <CalendarPlus className="size-4" />
-      )}
-      <span>{done ? "تم" : "يوم جديد"}</span>
-    </Button>
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        className="gap-1.5 shrink-0"
+        disabled={loading || done}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDialogOpen(true);
+        }}
+      >
+        {loading ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : done ? (
+          <Check className="size-4" />
+        ) : (
+          <CalendarPlus className="size-4" />
+        )}
+        <span>{done ? "تم" : "يوم جديد"}</span>
+      </Button>
+
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent className="max-w-md" onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-right">إضافة يوم جديد</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">
+              اختر تاريخ يوم الحضور الجديد لتسجيله للمدرسة بالكامل:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4" onClick={(e) => e.stopPropagation()}>
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter className="flex-row gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+            <AlertDialogCancel
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setDialogOpen(false);
+              }}
+            >
+              إلغاء
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setDialogOpen(false);
+                handleNewDay(selectedDate);
+              }}
+            >
+              تأكيد
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

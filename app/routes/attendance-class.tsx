@@ -5,6 +5,17 @@ import { toast } from "sonner";
 import type { Route } from "./+types/attendance-class";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Input } from "~/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import {
   Loader2,
   CalendarPlus,
@@ -93,13 +104,15 @@ export default function AttendanceClass({ loaderData }: Route.ComponentProps) {
   const uniqueEvents = Array.from(allEvents.values());
 
   const [creatingDay, setCreatingDay] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
 
-  async function handleNewDay() {
+  async function handleNewDay(dateStr: string) {
     setCreatingDay(true);
     try {
       await Promise.all(
         uniqueEvents.map((event) =>
-          api.post("/events/occurrences", { eventId: event.event_id })
+          api.post("/events/occurrences", { eventId: event.event_id, date: dateStr })
         )
       );
       // Invalidate occurrence caches so fresh data is loaded after reload
@@ -135,7 +148,7 @@ export default function AttendanceClass({ loaderData }: Route.ComponentProps) {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">تسجيل الحضور</h1>
         {isAdmin && (
-          <Button onClick={handleNewDay} disabled={creatingDay} className="gap-2">
+          <Button onClick={() => setDialogOpen(true)} disabled={creatingDay} className="gap-2">
             {creatingDay ? (
               <Loader2 className="size-5 animate-spin" />
             ) : (
@@ -162,6 +175,35 @@ export default function AttendanceClass({ loaderData }: Route.ComponentProps) {
           </div>
         ))}
       </div>
+
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-right">إضافة يوم جديد</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">
+              اختر تاريخ يوم الحضور الجديد لتسجيله:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter className="flex-row gap-2 justify-end">
+            <AlertDialogCancel onClick={() => setDialogOpen(false)}>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setDialogOpen(false);
+                handleNewDay(selectedDate);
+              }}
+            >
+              تأكيد
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

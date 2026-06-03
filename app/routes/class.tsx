@@ -936,7 +936,7 @@ function PersonTable<T extends Student | Teacher>({
         <TableHeader>
           <TableRow>
             {showIndex && (
-              <TableHead frozen className="start-0 w-10">
+              <TableHead frozen className="start-0 w-10 min-w-10 max-w-10 text-center px-0">
                 #
               </TableHead>
             )}
@@ -984,7 +984,7 @@ function PersonTable<T extends Student | Teacher>({
                 key={personId}
               >
                 {showIndex && (
-                  <TableCell frozen className="start-0 w-10">
+                  <TableCell frozen className="start-0 w-10 min-w-10 max-w-10 text-center px-0">
                     {index + 1}
                   </TableCell>
                 )}

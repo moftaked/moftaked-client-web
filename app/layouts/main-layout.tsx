@@ -86,7 +86,7 @@ export default function MainLayout() {
     <AttendanceSyncProvider>
       <SearchProvider>
         <ReportsDateProvider>
-          <div className="px-6 py-15 md:px-2 md:py-2">
+          <div className="px-4 pt-3 pb-16 md:px-2 md:py-2">
             {isMobile ? <BottomNavBarLayout /> : <SidebarLayout />}
           </div>
         </ReportsDateProvider>

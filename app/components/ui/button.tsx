@@ -36,21 +36,28 @@ const buttonVariants = cva(
   }
 )
 
+import { Loader2 } from "lucide-react"
+
 function Button({
   className,
   variant,
   size,
   asChild = false,
   onClick,
+  loading = false,
+  disabled,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    loading?: boolean
   }) {
   const [isAnimating, setIsAnimating] = useState(false)
   const Comp = asChild ? Slot : "button"
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (loading) return
     setIsAnimating(true)
     setTimeout(() => setIsAnimating(false), ANIMATION_DURATION);
     
@@ -65,11 +72,21 @@ function Button({
       className={cn(
         buttonVariants({ variant, size, className }),
         "ripple-effect",
-        isAnimating && "ripple-active"
+        isAnimating && "ripple-active",
+        loading && "relative text-transparent! select-none pointer-events-none"
       )}
       onClick={asChild ? onClick : handleClick}
+      disabled={disabled || loading}
       {...props}
-    />
+    >
+      {loading ? (
+        <span className="absolute inset-0 flex items-center justify-center text-current">
+          <Loader2 className="animate-spin size-5" />
+        </span>
+      ) : (
+        children
+      )}
+    </Comp>
   )
 }
 

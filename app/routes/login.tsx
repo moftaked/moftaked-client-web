@@ -1,4 +1,4 @@
-import { Form, redirect, useActionData } from "react-router";
+import { Form, redirect, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/login";
 import api from "~/lib/api";
 import { AxiosError } from "axios";
@@ -77,6 +77,9 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 // todo: mode toggle not appearing on mobile screens, because of ripple effect. it makes the button position relative not absolute
 export default function Login() {
   const actionState = useActionData<typeof clientAction>();
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === "submitting" || navigation.state === "loading";
+
   return (
     <>
       <ModeToggle className="absolute lg:top-0 lg:right-0 bottom-25 lg:m-4 pl-2 pr-6 lg:px-1 rounded-r-none lg:rounded-md" />
@@ -87,9 +90,9 @@ export default function Login() {
         <div className="flex flex-col justify-center size-full">
           <div className="flex flex-col items-center justify-center">
             <Form className="flex flex-col gap-2.5 w-5/7 lg:w-3/7" method="post">
-              <Input autoComplete="off" type="text" name="username" placeholder="اسم المستخدم" />
-              <Input autoComplete="current-password" type="password" name="password" placeholder="الباسورد" />
-              <Button type="submit">تسجيل الدخول</Button>
+              <Input autoComplete="off" type="text" name="username" placeholder="اسم المستخدم" disabled={isSubmitting} />
+              <Input autoComplete="current-password" type="password" name="password" placeholder="الباسورد" disabled={isSubmitting} />
+              <Button type="submit" loading={isSubmitting}>تسجيل الدخول</Button>
             </Form>
           </div>
           {actionState?.error &&

@@ -5,6 +5,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigation,
 } from "react-router";
 import { useEffect } from "react";
 
@@ -51,6 +52,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const navigation = useNavigation();
+  const isPageLoading = navigation.state === "loading";
+
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       const registerPWA = () => {
@@ -82,6 +86,11 @@ export default function App() {
   return (
     <ThemeProvider>
       <NavigationProvider>
+        {isPageLoading && (
+          <div className="fixed top-0 left-0 right-0 h-[3px] bg-muted/20 z-[9999] overflow-hidden">
+            <div className="h-full bg-primary animate-route-loading w-1/2 origin-left" />
+          </div>
+        )}
         <Outlet />
         <Toaster />
       </NavigationProvider>

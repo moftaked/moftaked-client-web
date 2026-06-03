@@ -97,7 +97,7 @@ function SidebarLayout() {
   const items = navigation.getSidebarItems();
   const [pinned, setPinned] = useState(localStorage.getItem("sidebar_state") === "true");
   const [hovering, setHovering] = useState(false);
-  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     localStorage.setItem("sidebar_state", pinned ? "true" : "false");

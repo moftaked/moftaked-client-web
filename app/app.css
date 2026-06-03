@@ -226,20 +226,22 @@ html {
   }
 
   /* --- Keyboard Open Viewport Enhancements --- */
-  /* When any input/textarea is focused, hide fixed bottom layouts and add scrollable space */
-  body:has(input:focus, textarea:focus) .bottom-nav-bar {
-    display: none !important;
-  }
-  body:has(input:focus, textarea:focus) .login-footer {
-    display: none !important;
-  }
-  body:has(input:focus, textarea:focus) .login-form {
-    padding-bottom: 8rem;
-  }
-  /* For scrollable sheet/dialog contents and pages, add generous bottom space so they can be scrolled above the keyboard */
-  body:has(input:focus, textarea:focus) [role="dialog"],
-  body:has(input:focus, textarea:focus) [data-slot="sheet-content"],
-  body:has(input:focus, textarea:focus) main {
-    padding-bottom: 20rem !important;
+  /* When any input/textarea is focused, hide fixed bottom layouts and add scrollable space (touch devices only) */
+  @media (pointer: coarse) {
+    body:has(input:focus, textarea:focus) .bottom-nav-bar {
+      display: none !important;
+    }
+    body:has(input:focus, textarea:focus) .login-footer {
+      display: none !important;
+    }
+    body:has(input:focus, textarea:focus) .login-form {
+      padding-bottom: 8rem;
+    }
+    /* For scrollable sheet/dialog contents and pages, add generous bottom space so they can be scrolled above the keyboard */
+    body:has(input:focus, textarea:focus) [role="dialog"],
+    body:has(input:focus, textarea:focus) [data-slot="sheet-content"],
+    body:has(input:focus, textarea:focus) main {
+      padding-bottom: 20rem !important;
+    }
   }
 }

@@ -1,16 +1,16 @@
 import { Logout } from "~/components/logout";
 import { ModeToggle } from "~/components/mode-toggle";
-import { isManager } from "~/lib/utils";
+import { isAdmin } from "~/lib/utils";
 import { Link } from "react-router";
 import { ShieldCheck, ArrowLeftRight, School, CalendarDays } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
 export default function More() {
-  const userIsManager = isManager();
+  const userIsAdmin = isAdmin();
 
   return (
     <div className="flex flex-col gap-3">
-      {userIsManager && (
+      {userIsAdmin && (
         <div className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-muted-foreground">إدارة</h2>
           <Button variant="outline" className="justify-start" asChild>

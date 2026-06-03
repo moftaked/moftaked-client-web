@@ -69,6 +69,7 @@ interface Account {
   account_id: number;
   username: string;
   real_name: string;
+  is_admin: boolean;
   roles: RoleInfo[];
 }
 
@@ -270,16 +271,19 @@ function AccountCard({
         </div>
 
         {/* Roles */}
-        {account.roles.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {account.roles.map((r, i) => (
-              <Badge key={i} variant={roleBadgeVariant(r.role)} className="text-xs">
-                {ROLE_LABELS[r.role] || r.role} — {r.class_name}
-              </Badge>
-            ))}
-          </div>
-        )}
-        {account.roles.length === 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {account.is_admin && (
+            <Badge variant="default" className="text-xs">
+              Admin
+            </Badge>
+          )}
+          {account.roles.map((r, i) => (
+            <Badge key={i} variant={roleBadgeVariant(r.role)} className="text-xs">
+              {ROLE_LABELS[r.role] || r.role} — {r.class_name}
+            </Badge>
+          ))}
+        </div>
+        {!account.is_admin && account.roles.length === 0 && (
           <span className="text-xs text-muted-foreground">لا يوجد أدوار</span>
         )}
       </CardContent>
@@ -527,7 +531,7 @@ function AssignRoleSheet({
   }
 
   async function handleAssign() {
-    if (!selectedClassId) {
+    if (selectedRole !== "admin" && !selectedClassId) {
       setApiError("اختر الفصل");
       return;
     }
@@ -536,14 +540,23 @@ function AssignRoleSheet({
     setApiError(null);
 
     try {
-      await api.post("/roles", {
-        user: account.username,
-        classId: selectedClassId,
-        role: selectedRole,
-      });
+      if (selectedRole === "admin") {
+        await api.post("/accounts/set-admin", {
+          user: account.username,
+          admin: true,
+        });
+        toast.success("تم ترقية الحساب إلى Admin بنجاح");
+      } else {
+        await api.post("/roles", {
+          user: account.username,
+          classId: selectedClassId as number,
+          role: selectedRole,
+        });
+        toast.success("تم إضافة الدور بنجاح");
+      }
       onSuccess();
-      toast.success("تم إضافة الدور بنجاح");
       setSelectedClassId("");
+      setSelectedRole("teacher");
     } catch (err: any) {
       if (err?.response?.status === 409) {
         setApiError("هذا الدور موجود بالفعل");
@@ -572,81 +585,126 @@ function AssignRoleSheet({
           {/* Current roles */}
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-semibold">الأدوار الحالية</h3>
-            {account.roles.length === 0 ? (
-              <p className="text-sm text-muted-foreground">لا يوجد أدوار</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>الدور</TableHead>
-                    <TableHead>الفصل</TableHead>
-                    <TableHead>الكنيسة</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {account.roles.map((r) => (
-                    <TableRow key={r.role_id}>
-                      <TableCell>
-                        <Badge variant={roleBadgeVariant(r.role)} className="text-xs">
-                          {ROLE_LABELS[r.role] || r.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">{r.class_name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {r.school_name}
-                      </TableCell>
-                      <TableCell>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-7 text-destructive hover:text-destructive"
-                              disabled={deletingRoleId === r.role_id}
-                            >
-                              {deletingRoleId === r.role_id ? (
-                                <Loader2 className="size-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="size-3.5" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>حذف الدور</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                هل أنت متأكد من حذف دور "{ROLE_LABELS[r.role] || r.role}" في فصل "{r.class_name}"؟
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                onClick={async () => {
-                                  setDeletingRoleId(r.role_id);
-                                  try {
-                                    await api.delete(`/accounts/roles/${r.role_id}`);
-                                    onSuccess();
-                                    toast.success("تم حذف الدور بنجاح");
-                                  } catch {
-                                    toast.error("حصلت مشكلة في حذف الدور");
-                                  } finally {
-                                    setDeletingRoleId(null);
-                                  }
-                                }}
-                              >
-                                حذف
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </TableCell>
+            <div className="flex flex-col gap-2">
+              {account.is_admin && (
+                <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="text-xs">Admin</Badge>
+                    <span className="text-sm text-muted-foreground">——</span>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="size-7 text-destructive hover:text-destructive">
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>إزالة صلاحية Admin</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          هل أنت متأكد من إزالة صلاحية Admin من "{account.real_name}"؟
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={async () => {
+                            try {
+                              await api.post("/accounts/set-admin", {
+                                user: account.username,
+                                admin: false,
+                              });
+                              onSuccess();
+                              toast.success("تم إزالة صلاحية Admin بنجاح");
+                            } catch {
+                              toast.error("حصلت مشكلة في إزالة الصلاحية");
+                            }
+                          }}
+                        >
+                          إزالة
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
+              {account.roles.length === 0 && !account.is_admin ? (
+                <p className="text-sm text-muted-foreground">لا يوجد أدوار</p>
+              ) : account.roles.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>الدور</TableHead>
+                      <TableHead>الفصل</TableHead>
+                      <TableHead>الكنيسة</TableHead>
+                      <TableHead className="w-10"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+                  </TableHeader>
+                  <TableBody>
+                    {account.roles.map((r) => (
+                      <TableRow key={r.role_id}>
+                        <TableCell>
+                          <Badge variant={roleBadgeVariant(r.role)} className="text-xs">
+                            {ROLE_LABELS[r.role] || r.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">{r.class_name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {r.school_name}
+                        </TableCell>
+                        <TableCell>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-7 text-destructive hover:text-destructive"
+                                disabled={deletingRoleId === r.role_id}
+                              >
+                                {deletingRoleId === r.role_id ? (
+                                  <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="size-3.5" />
+                                )}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>حذف الدور</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  هل أنت متأكد من حذف دور "{ROLE_LABELS[r.role] || r.role}" في فصل "{r.class_name}"؟
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={async () => {
+                                    setDeletingRoleId(r.role_id);
+                                    try {
+                                      await api.delete(`/accounts/roles/${r.role_id}`);
+                                      onSuccess();
+                                      toast.success("تم حذف الدور بنجاح");
+                                    } catch {
+                                      toast.error("حصلت مشكلة في حذف الدور");
+                                    } finally {
+                                      setDeletingRoleId(null);
+                                    }
+                                  }}
+                                >
+                                  حذف
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : null}
+            </div>
           </div>
 
           {/* Add new role */}
@@ -661,9 +719,10 @@ function AssignRoleSheet({
                 onChange={(e) =>
                   setSelectedClassId(e.target.value ? parseInt(e.target.value) : "")
                 }
+                disabled={selectedRole === "admin"}
                 className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-primary border-primary h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-lg transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
               >
-                <option value="">اختر الفصل</option>
+                <option value="">{selectedRole === "admin" ? "غير مطلوب" : "اختر الفصل"}</option>
                 {Array.from(schoolMap.entries()).map(([schoolName, schoolClasses]) => (
                   <optgroup key={schoolName} label={schoolName}>
                     {schoolClasses.map((cls) => (
@@ -671,7 +730,7 @@ function AssignRoleSheet({
                         {cls.class_name}
                       </option>
                     ))}
-                  </optgroup>
+                </optgroup>
                 ))}
               </select>
             </div>

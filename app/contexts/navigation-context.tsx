@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, ArrowLeftRight, School, CalendarDays, type LucideProps } from "lucide-react";
-import { isManager } from "~/lib/utils";
+import { isAdmin } from "~/lib/utils";
 
 export interface NavigationItem {
   title: string;
@@ -8,7 +8,7 @@ export interface NavigationItem {
   icon: React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
   showInSidebar?: boolean;
   showInBottomNav?: boolean;
-  /** When true, only shown if the user is a manager */
+  /** When true, only shown if the user is an admin */
   adminOnly?: boolean;
 }
 
@@ -83,9 +83,9 @@ const navigationItems: NavigationItem[] = [
 ];
 
 function filterByRole(items: NavigationItem[]): NavigationItem[] {
-  const userIsManager = isManager();
+  const userIsAdmin = isAdmin();
   return items.filter(item => {
-    if (item.adminOnly && !userIsManager) return false;
+    if (item.adminOnly && !userIsAdmin) return false;
     return true;
   });
 }

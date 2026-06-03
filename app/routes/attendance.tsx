@@ -66,6 +66,13 @@ function NewDayButton({ school }: { school: SchoolWithClasses }) {
       resetTimestampCache();
 
       const eventIds = res.data.eventIds ?? [];
+
+      if (eventIds.length === 0) {
+        toast.error("لا يوجد فعاليات في هذه المدرسة");
+        setLoading(false);
+        return;
+      }
+
       await Promise.all(
         eventIds.map((eid) => removeCached(eventOccurrencesKey(eid)))
       );

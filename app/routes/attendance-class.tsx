@@ -119,17 +119,7 @@ export default function AttendanceClass({ loaderData }: Route.ComponentProps) {
     return (
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-bold">تسجيل الحضور</h1>
-        <p className="text-muted-foreground">لا يوجد غياب في هذا الفصل</p>
-        {isAdmin && (
-          <Button onClick={handleNewDay} disabled={creatingDay} className="gap-2">
-            {creatingDay ? (
-              <Loader2 className="size-5 animate-spin" />
-            ) : (
-              <CalendarPlus className="size-5" />
-            )}
-            <span>يوم جديد</span>
-          </Button>
-        )}
+        <p className="text-muted-foreground">لا يوجد فعاليات في هذا الفصل</p>
       </div>
     );
   }

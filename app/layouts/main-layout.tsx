@@ -1,5 +1,6 @@
-import { NavLink, Outlet, useNavigate } from "react-router";
+import { NavLink, Outlet, useNavigate, useNavigation as useRRNavigation } from "react-router";
 import { SearchProvider } from "~/contexts/search-context";
+import { Skeleton } from "~/components/ui/skeleton";
 import { ReportsDateProvider } from "~/contexts/reports-date-context";
 import {
   Sidebar,
@@ -165,7 +166,7 @@ function SidebarLayout() {
             <GlobalSearchBar className="w-full max-w-md" />
           </div>
         </div>
-        <Outlet />
+        {useRRNavigation().state === "loading" ? <NavigationSkeleton /> : <Outlet />}
       </SidebarInset>
     </SidebarProvider>
   );
@@ -174,6 +175,8 @@ function SidebarLayout() {
 function BottomNavBarLayout() {
   const navigation = useNavigation();
   const items = navigation.getBottomNavItems();
+  const isPageLoading = useRRNavigation().state === "loading";
+
   return (
     <>
       <main className="pb-14">
@@ -181,7 +184,7 @@ function BottomNavBarLayout() {
           <GlobalSearchBar />
         </div>
         <SlidingContainer className="h-full">
-          <Outlet />
+          {isPageLoading ? <NavigationSkeleton /> : <Outlet />}
         </SlidingContainer>
       </main>
       <div className="flex rtl:flex-row-reverse flex-row justify-between fixed bottom-0 left-0 right-0 w-dvw h-14 px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] bg-sidebar z-50">
@@ -196,5 +199,98 @@ function BottomNavBarLayout() {
         ))}
       </div>
     </>
+  );
+}
+
+function NavigationSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 p-4 animate-pulse">
+      {/* Header Skeleton */}
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-10 w-10 rounded-full" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </div>
+      
+      {/* Filter / Search Bar Skeleton */}
+      <Skeleton className="h-12 w-full rounded-xl" />
+
+      {/* Grid of Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="border border-border/50 rounded-2xl p-5 flex flex-col gap-4 bg-card">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-12 w-12 rounded-xl" />
+            <div className="flex-1 flex flex-col gap-2">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          </div>
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+          <div className="flex justify-between items-center mt-2">
+            <Skeleton className="h-8 w-20 rounded-lg" />
+            <Skeleton className="h-8 w-24 rounded-lg" />
+          </div>
+        </div>
+
+        <div className="border border-border/50 rounded-2xl p-5 flex flex-col gap-4 bg-card">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-12 w-12 rounded-xl" />
+            <div className="flex-1 flex flex-col gap-2">
+              <Skeleton className="h-5 w-1/2" />
+              <Skeleton className="h-4 w-1/3" />
+            </div>
+          </div>
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <div className="flex justify-between items-center mt-2">
+            <Skeleton className="h-8 w-16 rounded-lg" />
+            <Skeleton className="h-8 w-28 rounded-lg" />
+          </div>
+        </div>
+
+        <div className="border border-border/50 rounded-2xl p-5 flex flex-col gap-4 bg-card">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-12 w-12 rounded-xl" />
+            <div className="flex-1 flex flex-col gap-2">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-3/4" />
+          <div className="flex justify-between items-center mt-2">
+            <Skeleton className="h-8 w-24 rounded-lg" />
+            <Skeleton className="h-8 w-20 rounded-lg" />
+          </div>
+        </div>
+      </div>
+
+      {/* Table Skeleton */}
+      <div className="flex flex-col gap-3 mt-4">
+        <Skeleton className="h-6 w-48" />
+        <div className="border border-border/50 rounded-xl overflow-hidden">
+          <div className="bg-muted/40 p-4 border-b border-border/50 flex justify-between">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-5 w-32" />
+          </div>
+          <div className="p-4 flex flex-col gap-3.5">
+            <div className="flex justify-between">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-5 w-16" />
+              <Skeleton className="h-5 w-28" />
+            </div>
+            <div className="flex justify-between">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-5 w-14" />
+              <Skeleton className="h-5 w-24" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

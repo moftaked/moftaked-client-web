@@ -83,6 +83,27 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.visualViewport) {
+      const updateVisualViewport = () => {
+        if (!window.visualViewport) return;
+        document.documentElement.style.setProperty(
+          "--visual-viewport-height",
+          `${window.visualViewport.height}px`
+        );
+      };
+      window.visualViewport.addEventListener("resize", updateVisualViewport);
+      window.visualViewport.addEventListener("scroll", updateVisualViewport);
+      updateVisualViewport();
+
+      return () => {
+        window.visualViewport?.removeEventListener("resize", updateVisualViewport);
+        window.visualViewport?.removeEventListener("scroll", updateVisualViewport);
+      };
+    }
+  }, []);
+
+
   return (
     <ThemeProvider>
       <NavigationProvider>

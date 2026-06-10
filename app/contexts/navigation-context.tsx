@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
-import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, ArrowLeftRight, School, CalendarDays, type LucideProps } from "lucide-react";
-import { isAdmin } from "~/lib/utils";
+import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, ArrowLeftRight, School, CalendarDays, Map, type LucideProps } from "lucide-react";
+import { isAdmin, isManager } from "~/lib/utils";
 
 export interface NavigationItem {
   title: string;
@@ -10,6 +10,8 @@ export interface NavigationItem {
   showInBottomNav?: boolean;
   /** When true, only shown if the user is an admin */
   adminOnly?: boolean;
+  /** When true, only shown if the user is a manager or admin */
+  managerOnly?: boolean;
 }
 
 export interface NavigationConfig {
@@ -74,6 +76,14 @@ const navigationItems: NavigationItem[] = [
     adminOnly: true,
   },
   { 
+    title: "إدارة المناطق", 
+    url: "/admin/districts", 
+    icon: Map,
+    showInSidebar: true,
+    showInBottomNav: false,
+    managerOnly: true,
+  },
+  { 
     title: "زيادات", 
     url: "/more", 
     icon: MenuIcon,
@@ -84,8 +94,10 @@ const navigationItems: NavigationItem[] = [
 
 function filterByRole(items: NavigationItem[]): NavigationItem[] {
   const userIsAdmin = isAdmin();
+  const userIsManager = isManager();
   return items.filter(item => {
     if (item.adminOnly && !userIsAdmin) return false;
+    if (item.managerOnly && !userIsManager) return false;
     return true;
   });
 }

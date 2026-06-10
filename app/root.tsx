@@ -38,9 +38,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem("vite-ui-theme");if(t==="dark")document.documentElement.classList.add("dark");else if(t==="system"||!t){window.matchMedia("(prefers-color-scheme:dark)").matches&&document.documentElement.classList.add("dark")}})()`,
+          }}
+        />
         <title>moftaked</title>
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-<meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
+
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <Meta />

@@ -19,6 +19,13 @@ import {
   SheetFooter,
 } from "~/components/ui/sheet";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -35,6 +42,7 @@ import {
   Loader2,
   Trash2,
   MapPin,
+  Merge,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -65,7 +73,8 @@ export function HydrateFallback() {
 export default function AdminDistricts({ loaderData }: Route.ComponentProps) {
   const { districts: initialDistricts } = loaderData;
   const [districts, setDistricts] = useState<District[]>(initialDistricts);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [mergeTarget, setMergeTarget] = useState<District | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   async function refresh() {
@@ -84,7 +93,7 @@ export default function AdminDistricts({ loaderData }: Route.ComponentProps) {
       toast.success("تم حذف المنطقة");
       refresh();
     } catch {
-      toast.error("حصلت مشكلة في حذف المنطقة");
+      toast.error("تعذر حذف المنطقة因为她 مرتبطة بأشخاص. استخدم دمج المنطقة بدلاً من ذلك.");
     } finally {
       setDeletingId(null);
     }
@@ -100,7 +109,7 @@ export default function AdminDistricts({ loaderData }: Route.ComponentProps) {
           <ArrowRight className="size-4" />
         </Link>
         <h1 className="text-xl font-bold flex-1">إدارة المناطق</h1>
-        <Button size="sm" onClick={() => setSheetOpen(true)}>
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" />
           منطقة جديدة
         </Button>
@@ -122,6 +131,14 @@ export default function AdminDistricts({ loaderData }: Route.ComponentProps) {
                 <span className="text-sm flex-1 truncate">
                   {district.district_name}
                 </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => setMergeTarget(district)}
+                >
+                  <Merge className="size-3.5" />
+                </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
@@ -138,7 +155,8 @@ export default function AdminDistricts({ loaderData }: Route.ComponentProps) {
                         حذف منطقة "{district.district_name}"؟
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        سيتم حذف المنطقة. هذا الإجراء لا يمكن التراجع عنه.
+                        إذا كانت المنطقة مرتبطة بأشخاص، استخدم دمج المنطقة بدلاً من الحذف.
+                        هذا الإجراء لا يمكن التراجع عنه.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -164,10 +182,20 @@ export default function AdminDistricts({ loaderData }: Route.ComponentProps) {
       )}
 
       <CreateDistrictSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
         onSuccess={() => {
-          setSheetOpen(false);
+          setCreateOpen(false);
+          refresh();
+        }}
+      />
+
+      <MergeDistrictSheet
+        source={mergeTarget}
+        districts={districts}
+        onClose={() => setMergeTarget(null)}
+        onSuccess={() => {
+          setMergeTarget(null);
           refresh();
         }}
       />
@@ -261,6 +289,125 @@ function CreateDistrictSheet({
               </>
             ) : (
               "إنشاء المنطقة"
+            )}
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function MergeDistrictSheet({
+  source,
+  districts,
+  onClose,
+  onSuccess,
+}: {
+  source: District | null;
+  districts: District[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const open = source !== null;
+  const [targetId, setTargetId] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const candidates = districts.filter((d) => d.district_id !== source?.district_id);
+
+  useEffect(() => {
+    if (open) {
+      setTargetId("");
+      setSubmitting(false);
+      setApiError(null);
+    }
+  }, [open]);
+
+  async function handleMerge() {
+    if (!source || !targetId) {
+      setApiError("يرجى اختيار المنطقة المستهدفة");
+      return;
+    }
+
+    setSubmitting(true);
+    setApiError(null);
+
+    try {
+      await api.post(`/districts/${source.district_id}/merge/${targetId}`);
+      toast.success(`تم دمج "${source.district_name}" بنجاح`);
+      onSuccess();
+    } catch {
+      setApiError("حصلت مشكلة أثناء الدمج، حاول تاني");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const targetDistrict = districts.find((d) => d.district_id === Number(targetId));
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>
+            <Merge className="size-5 inline-block ml-2" />
+            دمج المنطقة
+          </SheetTitle>
+          <SheetDescription>
+            دمج "{source?.district_name}" في منطقة أخرى. سيتم نقل جميع الأشخاص
+            المرتبطين بها إلى المنطقة المستهدفة ثم حذفها.
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="flex flex-col gap-4 px-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">دمج في المنطقة</label>
+            <Select value={targetId} onValueChange={setTargetId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="اختر المنطقة المستهدفة" />
+              </SelectTrigger>
+              <SelectContent>
+                {candidates.map((d) => (
+                  <SelectItem key={d.district_id} value={String(d.district_id)}>
+                    {d.district_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {targetDistrict && (
+            <div className="bg-muted px-4 py-3 rounded-md text-sm space-y-1">
+              <p>
+                <span className="font-medium">سيتم حذف:</span> {source?.district_name}
+              </p>
+              <p>
+                <span className="font-medium">سيتم نقل الأشخاص إلى:</span>{" "}
+                {targetDistrict.district_name}
+              </p>
+            </div>
+          )}
+
+          {apiError && (
+            <div className="bg-destructive/15 text-destructive px-4 py-2 rounded-md text-sm text-center">
+              {apiError}
+            </div>
+          )}
+        </div>
+
+        <SheetFooter>
+          <Button
+            className="w-full"
+            onClick={handleMerge}
+            disabled={submitting || !targetId}
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                جاري الدمج...
+              </>
+            ) : (
+              "دمج المناطق"
             )}
           </Button>
         </SheetFooter>

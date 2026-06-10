@@ -6,17 +6,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Install SSH key
-        run: |
-          install -m 600 -D /dev/null ~/.ssh/id_ed25519
-          echo "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
-      - name: Pull latest code and rebuild client
-        run: |
-          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} '
-            cd /opt/moftaked/client-web
-            git stash --include-untracked
-            git pull origin react-rewrite
-            git stash pop || true
-            docker compose -f /opt/moftaked/docker/docker-compose.prod.yml up -d --build client
-          '
+      - uses: actions/checkout@v4
+      - name: Deploy to Vercel
+        run: npx vercel --prod --yes --token=${{ secrets.VERCEL_TOKEN }}

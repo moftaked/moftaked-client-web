@@ -13,6 +13,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { ThemeProvider } from "./components/theme-provider";
 import { NavigationProvider } from "./contexts/navigation-context";
+import { toast } from "sonner";
 import { Toaster } from "./components/ui/sonner";
 
 export const links: Route.LinksFunction = () => [
@@ -61,7 +62,26 @@ export default function App() {
     if ("serviceWorker" in navigator) {
       const registerPWA = () => {
         import("virtual:pwa-register").then(({ registerSW }) => {
-          registerSW({ immediate: true });
+          const updateSW = registerSW({
+            onNeedRefresh() {
+              const toastId = toast("يتوفر تحديث جديد", {
+                description: "انقر للتحديث وإعادة التحميل",
+                action: {
+                  label: "تحديث",
+                  onClick: () => {
+                    toast.dismiss(toastId);
+                    updateSW();
+                  },
+                },
+                duration: Infinity,
+              });
+            },
+            onOfflineReady() {
+              toast("التطبيق جاهز للعمل بدون إنترنت", {
+                duration: 5000,
+              });
+            },
+          });
         }).catch(() => {
           // SW registration not available or unsupported browser
         });

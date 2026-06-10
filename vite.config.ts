@@ -63,7 +63,7 @@ export default defineConfig(({ mode }) => {
       reactRouter(),
       tsconfigPaths(),
       VitePWA({
-        registerType: "autoUpdate",
+        registerType: "prompt",
         includeAssets: ["favicon.ico", "icons/*.png", "icons/*.jpg", "fonts/**/*"],
         manifest: false,
         devOptions: {

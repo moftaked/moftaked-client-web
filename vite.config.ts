@@ -64,7 +64,7 @@ export default defineConfig(({ mode }) => {
       tsconfigPaths(),
       VitePWA({
         registerType: "autoUpdate",
-        includeAssets: ["favicon.ico", "icons/*.png", "fonts/**/*"],
+        includeAssets: ["favicon.ico", "icons/*.png", "icons/*.jpg", "fonts/**/*"],
         manifest: false,
         devOptions: {
           type: "module",

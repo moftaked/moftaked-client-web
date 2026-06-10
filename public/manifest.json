@@ -1,36 +1,32 @@
 {
-  "name": "مفتقد",
-  "short_name": "مفتقد",
+  "name": "moftaked",
+  "short_name": "moftaked",
   "description": "تطبيق تسجيل الحضور والافتقاد",
-  "start_url": "index.html",
-  "display": "standalone",
-  "background_color": "#ffffff",
   "theme_color": "#09090b",
+  "background_color": "#09090b",
+  "display": "standalone",
+  "scope": "./",
+  "start_url": "./",
   "dir": "rtl",
   "lang": "ar",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "48x48",
-      "type": "image/x-icon"
+      "src": "icons/manifest-icon-144.maskable.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "icons/manifest-icon-192.maskable.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
+      "src": "icons/manifest-icon-512.maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
-  ],
-  "categories": ["education", "productivity"],
-  "orientation": "portrait"
+  ]
 }

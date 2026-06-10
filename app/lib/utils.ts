@@ -100,5 +100,7 @@ export function getPhotoUrl(
   // Strip legacy .webp extension and any existing size suffix
   const base = photoLink.replace(/\.webp$/, "").replace(/-(sm|md|lg)$/, "");
 
-  return `${API_URL}/persons/photos/${base}-${size}.webp`;
+  const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+  const url = `${API_URL}/persons/photos/${base}-${size}.webp`;
+  return token ? `${url}?token=${encodeURIComponent(token)}` : url;
 }

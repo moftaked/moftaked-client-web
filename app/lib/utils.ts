@@ -97,10 +97,34 @@ export function getPhotoUrl(
 ): string | null {
   if (!photoLink) return null;
 
-  // Strip legacy .webp extension and any existing size suffix
   const base = photoLink.replace(/\.webp$/, "").replace(/-(sm|md|lg)$/, "");
+  return `${API_URL}/persons/photos/${base}-${size}.webp`;
+}
+
+/**
+ * Fetch an authenticated photo URL and return a blob URL.
+ * Falls back to `null` when the user is not logged in or the fetch fails.
+ */
+export async function fetchPhotoBlobUrl(
+  photoLink: string | null | undefined,
+  size: PhotoSize = "md",
+): Promise<string | null> {
+  const url = getPhotoUrl(photoLink, size);
+  if (!url) return null;
 
   const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-  const url = `${API_URL}/persons/photos/${base}-${size}.webp`;
-  return token ? `${url}?token=${encodeURIComponent(token)}` : url;
+  if (!token) return null;
+
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
 }
+
+

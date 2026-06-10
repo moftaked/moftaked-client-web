@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Link } from "react-router";
 import api from "~/lib/api";
 import type { Route } from "./+types/person";
-import { getPhotoUrl } from "~/lib/utils";
+import { usePhotoBlobUrl } from "~/hooks/use-photo-blob-url";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
 import {
@@ -108,7 +108,7 @@ export function HydrateFallback() {
 export default function PersonPage({ loaderData }: Route.ComponentProps) {
   const { person, type, personId } = loaderData;
   const [photoLink, setPhotoLink] = useState(person.photo_link);
-  const [photoVersion, setPhotoVersion] = useState(0);
+
   const [uploading, setUploading] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [cropperImageSrc, setCropperImageSrc] = useState<string | null>(null);
@@ -122,19 +122,10 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
     ? person.phone_numbers.split(", ").filter(Boolean)
     : [];
 
-  // Build photo URLs with cache-busting version param
-  const rawMediumUrl = getPhotoUrl(photoLink, "md");
-  const rawLargeUrl = getPhotoUrl(photoLink, "lg");
-  const mediumPhotoUrl =
-    rawMediumUrl && photoLink
-      ? `${rawMediumUrl}${photoVersion ? `?v=${photoVersion}` : ""}`
-      : null;
-  const largePhotoUrl =
-    rawLargeUrl && photoLink
-      ? `${rawLargeUrl}${photoVersion ? `?v=${photoVersion}` : ""}`
-      : null;
+  const { blobUrl: mediumBlobUrl, loading: photoLoading } = usePhotoBlobUrl(photoLink, "md");
+  const { blobUrl: largeBlobUrl } = usePhotoBlobUrl(photoLink, "lg");
 
-  const hasPhoto = !!mediumPhotoUrl;
+  const hasPhoto = !!mediumBlobUrl;
 
   // --------------------------------------------------
   // File selection handler — opens the cropper
@@ -200,8 +191,6 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
       });
 
       setPhotoLink(res.data.data.filename);
-      // Bump version to bust browser cache for the new image
-      setPhotoVersion((v) => v + 1);
 
       // Invalidate class-level caches so the table view re-fetches the
       // updated photo_link instead of showing the stale cached value.
@@ -269,7 +258,7 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
                 >
                   <img
                     key={photoLink}
-                    src={mediumPhotoUrl!}
+                    src={mediumBlobUrl!}
                     alt={person.person_name}
                     className="size-full object-cover"
                   />
@@ -463,9 +452,9 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
       )}
 
       {/* Fullscreen Photo Viewer */}
-      {viewerOpen && largePhotoUrl && (
+      {viewerOpen && largeBlobUrl && (
         <PhotoViewer
-          src={largePhotoUrl}
+          src={largeBlobUrl}
           alt={person.person_name}
           onClose={() => setViewerOpen(false)}
         />

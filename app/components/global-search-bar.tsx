@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router";
 import { Search, X, Loader2, User } from "lucide-react";
 import { Input } from "~/components/ui/input";
-import { cn, getPhotoUrl } from "~/lib/utils";
+import { cn } from "~/lib/utils";
+import { usePhotoBlobUrl } from "~/hooks/use-photo-blob-url";
 import api from "~/lib/api";
 import { useSearchContext } from "~/contexts/search-context";
 
@@ -330,18 +331,7 @@ function GlobalSearchMode({
                   focusedIndex === index && "bg-accent"
                 )}
               >
-                <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                  {getPhotoUrl(person.photo_link, "md") ? (
-                    <img
-                      src={getPhotoUrl(person.photo_link, "md")!}
-                      alt={person.person_name}
-                      className="size-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <User className="size-5 text-muted-foreground" />
-                  )}
-                </div>
+                <SearchResultPhoto photoLink={person.photo_link} name={person.person_name} />
 
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="text-sm font-medium truncate">
@@ -355,6 +345,25 @@ function GlobalSearchMode({
             ))
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function SearchResultPhoto({ photoLink, name }: { photoLink: string | null; name: string }) {
+  const { blobUrl } = usePhotoBlobUrl(photoLink, "sm");
+
+  return (
+    <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+      {blobUrl ? (
+        <img
+          src={blobUrl}
+          alt={name}
+          className="size-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <User className="size-5 text-muted-foreground" />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { User } from "lucide-react";
-import { cn, getPhotoUrl } from "~/lib/utils";
+import { cn } from "~/lib/utils";
+import { usePhotoBlobUrl } from "~/hooks/use-photo-blob-url";
 import { PhotoViewer } from "~/components/photo-viewer";
 
 // ---------------------------------------------------------------------------
@@ -93,15 +94,11 @@ export function PersonAvatar({
   const [imgError, setImgError] = useState(false);
 
   const config = SIZE_CONFIG[size];
-  const rawPhotoUrl = getPhotoUrl(photoLink, config.photoSize);
-  const largePhotoUrl = getPhotoUrl(photoLink, "lg");
-  const photoUrl =
-    rawPhotoUrl && version
-      ? `${rawPhotoUrl}${version ? `?v=${version}` : ""}`
-      : rawPhotoUrl;
-  const hasPhoto = !!photoUrl && !imgError;
+  const { blobUrl, loading, error } = usePhotoBlobUrl(photoLink, config.photoSize);
+  const { blobUrl: largeBlobUrl } = usePhotoBlobUrl(photoLink, "lg");
+  const hasPhoto = !!blobUrl && !imgError;
 
-  const isClickable = clickToView && !!largePhotoUrl && hasPhoto;
+  const isClickable = clickToView && !!largeBlobUrl && hasPhoto;
 
   function handleClick() {
     if (isClickable) {
@@ -138,7 +135,7 @@ export function PersonAvatar({
       >
         {hasPhoto ? (
           <img
-            src={photoUrl!}
+            src={blobUrl!}
             alt={name}
             className="size-full object-cover"
             loading="lazy"
@@ -159,9 +156,9 @@ export function PersonAvatar({
       </div>
 
       {/* Fullscreen photo viewer */}
-      {viewerOpen && largePhotoUrl && (
+      {viewerOpen && largeBlobUrl && (
         <PhotoViewer
-          src={largePhotoUrl}
+          src={largeBlobUrl}
           alt={name}
           onClose={() => setViewerOpen(false)}
         />

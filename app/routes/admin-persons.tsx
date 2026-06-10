@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router";
 import api from "~/lib/api";
 import type { Route } from "./+types/admin-persons";
-import { isManager, getPhotoUrl } from "~/lib/utils";
+import { isManager } from "~/lib/utils";
+import { usePhotoBlobUrl } from "~/hooks/use-photo-blob-url";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -324,13 +325,15 @@ function PersonResultCard({
     })
     .filter(Boolean);
 
+  const { blobUrl } = usePhotoBlobUrl(person.photo_link, "sm");
+
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">
         <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-          {getPhotoUrl(person.photo_link, "md") ? (
+          {blobUrl ? (
             <img
-              src={getPhotoUrl(person.photo_link, "md")!}
+              src={blobUrl}
               alt={person.person_name}
               className="size-full object-cover"
               loading="lazy"

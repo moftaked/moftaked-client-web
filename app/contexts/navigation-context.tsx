@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, ArrowLeftRight, School, CalendarDays, Map, type LucideProps } from "lucide-react";
+import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, ArrowLeftRight, School, CalendarDays, Map, Settings, type LucideProps } from "lucide-react";
 import { isAdmin, isManager } from "~/lib/utils";
 
 export interface NavigationItem {
@@ -89,6 +89,13 @@ const navigationItems: NavigationItem[] = [
     icon: MenuIcon,
     showInSidebar: false,
     showInBottomNav: true
+  },
+  { 
+    title: "الإعدادات", 
+    url: "/settings", 
+    icon: Settings,
+    showInSidebar: true,
+    showInBottomNav: false
   },
 ];
 

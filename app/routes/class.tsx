@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
-import { useRevalidator, Link } from "react-router";
+import { useState, useMemo, useEffect } from "react";
+import { useRevalidator, Link, useLocation } from "react-router";
 import { useSearchFilter } from "~/contexts/search-context";
+import { useRouteState } from "~/contexts/route-state-context";
 import api from "~/lib/api";
 import type { Route } from "./+types/class";
 import { fetchAndCache, resetTimestampCache } from "~/lib/sync-manager";
@@ -257,15 +258,18 @@ export function HydrateFallback() {
 function CollapsibleSection({
   title,
   count,
+  expanded,
+  onToggle,
   onAdd,
   children,
 }: {
   title: string;
   count: number;
+  expanded: boolean;
+  onToggle: () => void;
   onAdd?: () => void;
   children: React.ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const Icon = expanded ? ChevronUp : ChevronDown;
 
   return (
@@ -274,7 +278,7 @@ function CollapsibleSection({
         <Button
           variant="ghost"
           className="grow justify-between text-xl font-bold px-2 py-5"
-          onClick={() => setExpanded(!expanded)}
+          onClick={onToggle}
         >
           <span>
             {title} ({count})
@@ -867,32 +871,25 @@ function SortableHead({
 function PersonTable<T extends Student | Teacher>({
   type,
   persons,
+  selectedColumns,
+  sort,
+  onToggleColumn,
+  onSort,
   onEdit,
   avatarVersion,
 }: {
   type: "student" | "teacher";
   persons: T[];
+  selectedColumns: Set<string>;
+  sort: SortState;
+  onToggleColumn: (key: string) => void;
+  onSort: (column: string) => void;
   onEdit: (person: T) => void;
   avatarVersion: number;
 }) {
-  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(
-    () => new Set(ALL_COLUMN_KEYS)
-  );
-
-  const [sort, setSort] = useState<SortState>({ column: null, direction: "asc" });
-
-  function handleSort(column: string) {
-    setSort((prev) => {
-      if (prev.column === column) {
-        if (prev.direction === "asc") {
-          return { column, direction: "desc" };
-        }
-        // was desc → clear sort
-        return { column: null, direction: "asc" };
-      }
-      return { column, direction: "asc" };
-    });
-  }
+  const showIndex = selectedColumns.has("index");
+  const showName = selectedColumns.has("name");
+  const nameStartClass = showIndex ? "start-10" : "start-0";
 
   const sortedPersons = useMemo(() => {
     if (!sort.column) return persons;
@@ -901,28 +898,11 @@ function PersonTable<T extends Student | Teacher>({
     return [...persons].sort((a, b) => {
       const aVal = getSortValue(type, a, col);
       const bVal = getSortValue(type, b, col);
-      // Push empty values to the end regardless of direction
       if (!aVal && bVal) return 1;
       if (aVal && !bVal) return -1;
       return dir * aVal.localeCompare(bVal, "ar");
     });
   }, [persons, sort, type]);
-
-  function toggleColumn(key: string) {
-    setSelectedColumns((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  }
-
-  const showIndex = selectedColumns.has("index");
-  const showName = selectedColumns.has("name");
-  const nameStartClass = showIndex ? "start-10" : "start-0";
 
   return (
     <div>
@@ -930,7 +910,7 @@ function PersonTable<T extends Student | Teacher>({
         type={type}
         persons={persons}
         selectedColumns={selectedColumns}
-        onToggleColumn={toggleColumn}
+        onToggleColumn={onToggleColumn}
       />
       <Table>
         <TableHeader>
@@ -945,22 +925,22 @@ function PersonTable<T extends Student | Teacher>({
                 column="name"
                 label="الاسم"
                 sort={sort}
-                onSort={handleSort}
+                onSort={onSort}
                 frozen
-                className={nameStartClass}
+                className={`${nameStartClass} whitespace-normal`}
               />
             )}
             {selectedColumns.has("district") && (
-              <SortableHead column="district" label="المنطقة" sort={sort} onSort={handleSort} />
+              <SortableHead column="district" label="المنطقة" sort={sort} onSort={onSort} />
             )}
             {selectedColumns.has("address") && (
-              <SortableHead column="address" label="العنوان" sort={sort} onSort={handleSort} />
+              <SortableHead column="address" label="العنوان" sort={sort} onSort={onSort} />
             )}
             {selectedColumns.has("phone_numbers") && (
-              <SortableHead column="phone_numbers" label="أرقام التليفون" sort={sort} onSort={handleSort} />
+              <SortableHead column="phone_numbers" label="أرقام التليفون" sort={sort} onSort={onSort} />
             )}
             {selectedColumns.has("notes") && (
-              <SortableHead column="notes" label="ملاحظات" sort={sort} onSort={handleSort} />
+              <SortableHead column="notes" label="ملاحظات" sort={sort} onSort={onSort} />
             )}
             <TableHead className="w-10"></TableHead>
           </TableRow>
@@ -989,7 +969,7 @@ function PersonTable<T extends Student | Teacher>({
                   </TableCell>
                 )}
                 {showName && (
-                  <TableCell frozen className={`${nameStartClass} font-medium`}>
+                  <TableCell frozen className={`${nameStartClass} font-medium min-w-0 w-28 max-w-28 whitespace-normal`}>
                     <Link
                       to={`/person/${type}/${personId}`}
                       className="flex items-center gap-2 hover:text-primary transition-colors"
@@ -1001,7 +981,7 @@ function PersonTable<T extends Student | Teacher>({
                         clickToView={false}
                         version={avatarVersion}
                       />
-                      <span className="truncate">{name}</span>
+                      <span className="break-words">{name}</span>
                     </Link>
                   </TableCell>
                 )}
@@ -1047,6 +1027,86 @@ export default function Class({ loaderData }: Route.ComponentProps) {
   const revalidator = useRevalidator();
   const filterText = useSearchFilter();
   const [avatarVersion, setAvatarVersion] = useState(1);
+  const location = useLocation();
+  const { saveState, restoreState } = useRouteState();
+
+  const savedState = restoreState(location.pathname) ?? {};
+
+  const defaultColumns = ALL_COLUMN_KEYS.filter(k => k !== "index");
+
+  const [studentsExpanded, setStudentsExpanded] = useState(
+    savedState.studentSectionExpanded ?? false
+  );
+  const [teachersExpanded, setTeachersExpanded] = useState(
+    savedState.teacherSectionExpanded ?? false
+  );
+
+  const [studentColumns, setStudentColumns] = useState<Set<string>>(
+    () => new Set(savedState.studentColumns ?? defaultColumns)
+  );
+  const [studentSort, setStudentSort] = useState<SortState>({
+    column: savedState.studentSortColumn ?? null,
+    direction: savedState.studentSortDirection ?? "asc",
+  });
+
+  const [teacherColumns, setTeacherColumns] = useState<Set<string>>(
+    () => new Set(savedState.teacherColumns ?? defaultColumns)
+  );
+  const [teacherSort, setTeacherSort] = useState<SortState>({
+    column: savedState.teacherSortColumn ?? null,
+    direction: savedState.teacherSortDirection ?? "asc",
+  });
+
+  useEffect(() => {
+    saveState(location.pathname, {
+      studentSectionExpanded: studentsExpanded,
+      teacherSectionExpanded: teachersExpanded,
+      studentColumns: [...studentColumns],
+      studentSortColumn: studentSort.column,
+      studentSortDirection: studentSort.direction,
+      teacherColumns: [...teacherColumns],
+      teacherSortColumn: teacherSort.column,
+      teacherSortDirection: teacherSort.direction,
+    });
+  }, [studentsExpanded, teachersExpanded, studentColumns, studentSort, teacherColumns, teacherSort, saveState, location.pathname]);
+
+  function toggleStudentColumn(key: string) {
+    setStudentColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function handleStudentSort(column: string) {
+    setStudentSort((prev) => {
+      if (prev.column === column) {
+        if (prev.direction === "asc") return { column, direction: "desc" };
+        return { column: null, direction: "asc" };
+      }
+      return { column, direction: "asc" };
+    });
+  }
+
+  function toggleTeacherColumn(key: string) {
+    setTeacherColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function handleTeacherSort(column: string) {
+    setTeacherSort((prev) => {
+      if (prev.column === column) {
+        if (prev.direction === "asc") return { column, direction: "desc" };
+        return { column: null, direction: "asc" };
+      }
+      return { column, direction: "asc" };
+    });
+  }
 
   const filteredStudents = useMemo(() => {
     const q = filterText.trim().toLowerCase();
@@ -1096,6 +1156,8 @@ export default function Class({ loaderData }: Route.ComponentProps) {
       <CollapsibleSection
         title="المخدومين"
         count={filteredStudents.length}
+        expanded={studentsExpanded}
+        onToggle={() => setStudentsExpanded((v) => !v)}
         onAdd={() => openAdd("student")}
       >
         {filteredStudents.length === 0 ? (
@@ -1103,7 +1165,7 @@ export default function Class({ loaderData }: Route.ComponentProps) {
             {filterText.trim() ? "لا يوجد نتائج" : "لا يوجد مخدومين في هذا الفصل"}
           </p>
         ) : (
-          <PersonTable type="student" persons={filteredStudents} onEdit={openEditStudent} avatarVersion={avatarVersion} />
+          <PersonTable type="student" persons={filteredStudents} selectedColumns={studentColumns} sort={studentSort} onToggleColumn={toggleStudentColumn} onSort={handleStudentSort} onEdit={openEditStudent} avatarVersion={avatarVersion} />
         )}
       </CollapsibleSection>
 
@@ -1111,6 +1173,8 @@ export default function Class({ loaderData }: Route.ComponentProps) {
         <CollapsibleSection
           title="الخدام"
           count={filteredTeachers.length}
+          expanded={teachersExpanded}
+          onToggle={() => setTeachersExpanded((v) => !v)}
           onAdd={() => openAdd("teacher")}
         >
           {filteredTeachers.length === 0 ? (
@@ -1118,7 +1182,7 @@ export default function Class({ loaderData }: Route.ComponentProps) {
               {filterText.trim() ? "لا يوجد نتائج" : "لا يوجد خدام في هذا الفصل"}
             </p>
           ) : (
-            <PersonTable type="teacher" persons={filteredTeachers} onEdit={openEditTeacher} avatarVersion={avatarVersion} />
+            <PersonTable type="teacher" persons={filteredTeachers} selectedColumns={teacherColumns} sort={teacherSort} onToggleColumn={toggleTeacherColumn} onSort={handleTeacherSort} onEdit={openEditTeacher} avatarVersion={avatarVersion} />
           )}
         </CollapsibleSection>
       )}

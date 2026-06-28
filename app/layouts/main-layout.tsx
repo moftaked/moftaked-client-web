@@ -33,9 +33,11 @@ import { GlobalSearchBar } from "~/components/global-search-bar";
 export default function MainLayout() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  if (!isAuthenticated()) {
-    navigate('/login');
-  }
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   // Eagerly prefetch all API data in the background so every page works
   // offline — even pages the user hasn't visited yet.

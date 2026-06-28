@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 import api from "~/lib/api";
 import type { Route } from "./+types/person";
@@ -39,10 +39,29 @@ import {
   Maximize,
   ImageUp,
   Trash2,
+  Pencil,
 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "~/components/ui/sheet";
+import { Input } from "~/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { toast } from "sonner";
 import { ImageCropper } from "~/components/image-cropper";
 import { PhotoViewer } from "~/components/photo-viewer";
+import { AssignPersonSheet } from "~/components/assign-person-sheet";
+import { isAdmin } from "~/lib/utils";
 import { resetTimestampCache } from "~/lib/sync-manager";
 import {
   classStudentsKey,
@@ -135,6 +154,96 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
   const phones = person.phone_numbers
     ? person.phone_numbers.split(", ").filter(Boolean)
     : [];
+
+  // Edit sheet
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState(person.person_name);
+  const [editPhone, setEditPhone] = useState(phones[0] ?? "");
+  const [editPhone2, setEditPhone2] = useState(phones[1] ?? "");
+  const [editAddress, setEditAddress] = useState(person.address ?? "");
+  const [editNotes, setEditNotes] = useState(person.notes ?? "");
+  const [editDistrictId, setEditDistrictId] = useState<string>("");
+  const [districts, setDistricts] = useState<{ district_id: number; district_name: string }[]>([]);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const fetchedDistricts = useRef(false);
+
+  // Assign sheet
+  const [assignSheetOpen, setAssignSheetOpen] = useState(false);
+  const [allClasses, setAllClasses] = useState<{ class_id: number; class_name: string; school_id: number; school_name: string }[]>([]);
+  const fetcheClasses = useRef(false);
+  const schoolMap = useMemo(() => {
+    const m = new globalThis.Map<string, { class_id: number; class_name: string; school_id: number; school_name: string }[]>();
+    for (const cls of allClasses) {
+      const key = cls.school_name;
+      if (!m.has(key)) m.set(key, []);
+      m.get(key)!.push(cls);
+    }
+    return m;
+  }, [allClasses]);
+
+  function openAssignSheet() {
+    if (!fetcheClasses.current) {
+      fetcheClasses.current = true;
+      api.get<{ success: boolean; data: { class_id: number; class_name: string; school_id: number; school_name: string }[] }>("/accounts/classes").then((res) => {
+        setAllClasses(res.data.data);
+      });
+    }
+    setAssignSheetOpen(true);
+  }
+
+  function openEdit() {
+    setEditName(person.person_name);
+    setEditPhone(phones[0] ?? "");
+    setEditPhone2(phones[1] ?? "");
+    setEditAddress(person.address ?? "");
+    setEditNotes(person.notes ?? "");
+    setEditDistrictId("");
+    setEditOpen(true);
+    if (!fetchedDistricts.current) {
+      fetchedDistricts.current = true;
+      api.get<{ success: boolean; data: { district_id: number; district_name: string }[] }>("/districts").then((res) => {
+        const all = res.data.data;
+        setDistricts(all);
+        if (person.district_name) {
+          const match = all.find((d) => d.district_name === person.district_name);
+          if (match) setEditDistrictId(String(match.district_id));
+        }
+      });
+    } else if (person.district_name) {
+      const match = districts.find((d) => d.district_name === person.district_name);
+      if (match) setEditDistrictId(String(match.district_id));
+    }
+  }
+
+  async function handleEditSave() {
+    if (!editName.trim()) return;
+    setEditSubmitting(true);
+    try {
+      const paramKey = type === "student" ? "students" : "teachers";
+      await api.put(`/persons/${paramKey}/${personId}`, {
+        name: editName.trim(),
+        phone_number: editPhone.trim(),
+        second_phone_number: editPhone2.trim(),
+        address: editAddress.trim(),
+        notes: editNotes.trim(),
+        district_id: editDistrictId ? Number(editDistrictId) : null,
+      });
+      resetTimestampCache();
+      await Promise.all(
+        person.classes.map((cls) => {
+          const key = cls.type === "student" ? classStudentsKey(cls.class_id) : classTeachersKey(cls.class_id);
+          return removeCached(key);
+        })
+      );
+      toast.success("تم حفظ التعديلات");
+      setEditOpen(false);
+      navigate(".", { replace: true });
+    } catch {
+      toast.error("حدث خطأ أثناء حفظ التعديلات");
+    } finally {
+      setEditSubmitting(false);
+    }
+  }
 
   const { blobUrl: mediumBlobUrl, loading: photoLoading } = usePhotoBlobUrl(photoLink, "md");
   const { blobUrl: largeBlobUrl } = usePhotoBlobUrl(photoLink, "lg");
@@ -390,8 +499,12 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
 
       {/* Info Card */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">البيانات الشخصية</CardTitle>
+          <Button variant="outline" size="sm" onClick={openEdit}>
+            <Pencil className="size-3.5" />
+            تعديل
+          </Button>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {/* Phone Numbers */}
@@ -403,7 +516,7 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
                     key={i}
                     href={`tel:${phone}`}
                     dir="ltr"
-                    className="text-primary hover:underline text-end"
+                    className="text-foreground hover:text-primary hover:underline text-end"
                   >
                     {phone}
                   </a>
@@ -446,13 +559,19 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
       </Card>
 
       {/* Classes Card */}
-      {person.classes && person.classes.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">الفصول</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {person.classes.map((cls: PersonClass) => (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg">الفصول</CardTitle>
+          {isAdmin() && (
+            <Button variant="outline" size="sm" onClick={openAssignSheet}>
+              <Pencil className="size-3.5" />
+              تعديل
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          {person.classes && person.classes.length > 0 ? (
+            person.classes.map((cls: PersonClass) => (
               <Link
                 key={cls.class_id}
                 to={`/class/${cls.class_id}`}
@@ -468,10 +587,14 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
                   </span>
                 </div>
               </Link>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground py-2 text-center">
+              لا يوجد فصول
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Delete Button */}
       <AlertDialog>
@@ -536,6 +659,89 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
           onClose={() => setViewerOpen(false)}
         />
       )}
+
+      {/* Edit Sheet */}
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+        <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>تعديل البيانات الشخصية</SheetTitle>
+            <SheetDescription>
+              قم بتعديل بيانات {person.person_name}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex flex-col gap-4 px-4 py-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium">الاسم</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium">رقم التليفون</label>
+              <Input
+                dir="ltr"
+                className="text-right"
+                type="tel"
+                inputMode="numeric"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium">رقم تليفون ثاني (اختياري)</label>
+              <Input
+                dir="ltr"
+                className="text-right"
+                type="tel"
+                inputMode="numeric"
+                value={editPhone2}
+                onChange={(e) => setEditPhone2(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium">العنوان</label>
+              <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium">المنطقة</label>
+              <Select value={editDistrictId} onValueChange={setEditDistrictId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر المنطقة" />
+                </SelectTrigger>
+                <SelectContent>
+                  {districts.map((d) => (
+                    <SelectItem key={d.district_id} value={String(d.district_id)}>
+                      {d.district_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium">ملاحظات</label>
+              <Input
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+              />
+            </div>
+          </div>
+          <SheetFooter>
+            <Button onClick={handleEditSave} disabled={editSubmitting}>
+              {editSubmitting && <Loader2 className="size-4 animate-spin" />}
+              حفظ
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Assign Classes Sheet */}
+      <AssignPersonSheet
+        open={assignSheetOpen}
+        person={{ person_id: person.person_id, person_name: person.person_name, photo_link: person.photo_link }}
+        personType={type}
+        classes={allClasses}
+        schoolMap={schoolMap}
+        onClose={() => setAssignSheetOpen(false)}
+        onSuccess={() => navigate(".", { replace: true })}
+      />
     </div>
   );
 }

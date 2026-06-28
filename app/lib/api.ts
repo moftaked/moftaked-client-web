@@ -23,14 +23,20 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
     if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
       localStorage.removeItem('authToken');
       return Promise.reject(redirect('/login'));
     }
+
+    const err = error instanceof Error ? error : new Error(error.message ?? String(error));
+    const status = error.response?.status;
+    const data = error.response?.data;
+    if (data?.message) err.message = data.message;
+    if (status) err.message = `[${status}] ${err.message}`;
+
+    window.dispatchEvent(new CustomEvent("app-error", { detail: err }));
     return Promise.reject(error);
   }
 );

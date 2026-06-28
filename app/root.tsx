@@ -13,8 +13,13 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { ThemeProvider } from "./components/theme-provider";
 import { NavigationProvider } from "./contexts/navigation-context";
+import { RouteStateProvider } from "./contexts/route-state-context";
+import { AppErrorBoundary } from "./components/error-boundary";
 import { toast } from "sonner";
 import { Toaster } from "./components/ui/sonner";
+import { captureConsole } from "./lib/console-buffer";
+
+captureConsole();
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -34,7 +39,7 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -136,13 +141,17 @@ export default function App() {
   return (
     <ThemeProvider>
       <NavigationProvider>
-        {isPageLoading && (
-          <div className="fixed top-0 left-0 right-0 h-[3px] bg-muted/20 z-[9999] overflow-hidden">
-            <div className="h-full bg-primary animate-route-loading w-1/2 origin-left" />
-          </div>
-        )}
-        <Outlet />
-        <Toaster />
+        <AppErrorBoundary>
+          <RouteStateProvider>
+            {isPageLoading && (
+              <div className="fixed top-0 left-0 right-0 h-[3px] bg-muted/20 z-[9999] overflow-hidden">
+                <div className="h-full bg-primary animate-route-loading w-1/2 origin-left" />
+              </div>
+            )}
+            <Outlet />
+            <Toaster />
+          </RouteStateProvider>
+        </AppErrorBoundary>
       </NavigationProvider>
     </ThemeProvider>
   );

@@ -282,7 +282,7 @@ export function classTeachersKey(classId: number | string): string {
 }
 
 export function classEventsKey(classId: number | string): string {
-  return `class_${classId}_events`;
+  return `class_${classId}_events_v2`;
 }
 
 export function eventOccurrencesKey(eventId: number | string): string {

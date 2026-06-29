@@ -797,7 +797,7 @@ function AttendanceList({
             {!person.attended && isExpanded && (
               <div className="px-12 pb-3 pt-0 flex flex-col gap-2">
                 <Input
-                  placeholder="سبب الغياب (اختياري)"
+                  placeholder="سبب الغياب"
                   className="text-sm"
                   dir="rtl"
                   defaultValue={displayReason}

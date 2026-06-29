@@ -357,39 +357,6 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
 
 
 
-  // Computed stats
-  const allStudentBreakdowns = (summary?.events ?? []).flatMap((e) =>
-    e.breakdown.filter((b) => b.person_type === "student")
-  );
-  const totalStudents = allStudentBreakdowns.reduce(
-    (s, b) => s + b.total,
-    0
-  );
-  const attendedStudents = allStudentBreakdowns.reduce(
-    (s, b) => s + b.attended,
-    0
-  );
-  const studentRate =
-    totalStudents > 0
-      ? Math.round((attendedStudents / totalStudents) * 100)
-      : 0;
-
-  const allTeacherBreakdowns = (summary?.events ?? []).flatMap((e) =>
-    e.breakdown.filter((b) => b.person_type === "teacher")
-  );
-  const totalTeachers = allTeacherBreakdowns.reduce(
-    (s, b) => s + b.total,
-    0
-  );
-  const attendedTeachers = allTeacherBreakdowns.reduce(
-    (s, b) => s + b.attended,
-    0
-  );
-  const teacherRate =
-    totalTeachers > 0
-      ? Math.round((attendedTeachers / totalTeachers) * 100)
-      : 0;
-
   const displayDate = formatDisplayDate(selectedDate);
 
   return (
@@ -465,25 +432,7 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
 
           {summary && (
             <>
-              {/* Quick Stats Cards */}
-              <div className="grid grid-cols-2 gap-3">
-                <QuickStatCard
-                  icon={GraduationCap}
-                  label="المخدومين"
-                  attended={attendedStudents}
-                  total={totalStudents}
-                  rate={studentRate}
-                />
-                {isLeaderOrManager && totalTeachers > 0 && (
-                  <QuickStatCard
-                    icon={Users}
-                    label="الخدام"
-                    attended={attendedTeachers}
-                    total={totalTeachers}
-                    rate={teacherRate}
-                  />
-                )}
-              </div>
+
 
               {/* Tabs */}
               <Tabs
@@ -583,51 +532,6 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
         </>
       )}
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Quick Stat Card
-// ---------------------------------------------------------------------------
-
-function QuickStatCard({
-  icon: Icon,
-  label,
-  attended,
-  total,
-  rate,
-}: {
-  icon: React.ElementType;
-  label: string;
-  attended: number;
-  total: number;
-  rate: number;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Icon className="size-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">{label}</span>
-        </div>
-        <div className="flex items-end justify-between">
-          <div>
-            <span className="text-2xl font-bold">{attended}</span>
-            <span className="text-sm text-muted-foreground">/{total}</span>
-          </div>
-          <RateBadge rate={rate} />
-        </div>
-        <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all duration-700",
-              rateColor(rate)
-            )}
-            style={{ width: `${rate}%` }}
-          />
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 

@@ -321,7 +321,7 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
     if (activeTab !== "ranged") return;
     if (rangedAbsentees !== null) return;
     setChronicLoading(true);
-    const params = `type=student&threshold=50&start_date=${rangedStartDate}&end_date=${rangedEndDate}`;
+    const params = `type=student&start_date=${rangedStartDate}&end_date=${rangedEndDate}`;
 
     if (isLeaderOrManager) {
       Promise.all([
@@ -946,7 +946,7 @@ function RangedAbsenteesPanel({
 
   if (!hasStudents && !hasTeachers) {
     return (
-      <EmptyState message="لا يوجد منقطعين (حضور أقل من 50% في آخر 5 مرات)" />
+      <EmptyState message="لا يوجد بيانات حضور في هذا النطاق" />
     );
   }
 
@@ -966,7 +966,7 @@ function RangedAbsenteesPanel({
             </Button>
           </div>
         )}
-        <EmptyState message={`لا يوجد ${label} منقطعين (حضور أقل من 50% في آخر 5 مرات)`} />
+        <EmptyState message={`لا يوجد ${label} في هذا النطاق`} />
       </div>
     );
   }

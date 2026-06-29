@@ -1,4 +1,4 @@
-import { Component, createContext, useContext, type ErrorInfo, type ReactNode } from "react"
+import { Component, createContext, useContext, useState, type ErrorInfo, type ReactNode } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,7 +9,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog"
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, Copy } from "lucide-react"
 
 interface AppErrorBoundaryState {
   hasError: boolean
@@ -99,6 +99,17 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, AppErro
 }
 
 function ErrorDialog({ error, onDismiss }: { error: Error; onDismiss: () => void }) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy() {
+    const text = `${error.message}\n\n${error.stack ?? ""}`.trim()
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {}
+  }
+
   return (
     <AlertDialog defaultOpen onOpenChange={(open) => { if (!open) onDismiss() }}>
       <AlertDialogContent>
@@ -117,6 +128,14 @@ function ErrorDialog({ error, onDismiss }: { error: Error; onDismiss: () => void
           </pre>
         )}
         <AlertDialogFooter>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            onClick={handleCopy}
+          >
+            <Copy className="size-3.5" />
+            {copied ? "تم النسخ" : "نسخ الخطأ"}
+          </button>
           <AlertDialogAction onClick={() => window.location.reload()}>
             إعادة تحميل
           </AlertDialogAction>

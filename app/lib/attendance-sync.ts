@@ -1,26 +1,19 @@
 import api from "~/lib/api";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export type SyncStatus = "synced" | "pending" | "syncing" | "error";
 
 export interface PendingChange {
-  /** person_id → desired attended value (1 or 0) */
   changes: Record<number, number>;
+  reasons: Record<number, string>;
   timestamp: number;
 }
 
 export interface StoredPendingData {
   endpoint: string;
   changes: Record<number, number>;
+  reasons: Record<number, string>;
   timestamp: number;
 }
-
-// ---------------------------------------------------------------------------
-// Storage key helpers
-// ---------------------------------------------------------------------------
 
 const STORAGE_PREFIX = "attendance_pending_";
 
@@ -40,23 +33,21 @@ export function getEndpoint(
     : `/attendance/${eventOccurrenceId}/teachers`;
 }
 
-// ---------------------------------------------------------------------------
-// localStorage operations
-// ---------------------------------------------------------------------------
-
 export function savePendingChanges(
   eventOccurrenceId: number,
   type: "student" | "teacher",
-  changes: Record<number, number>
+  changes: Record<number, number>,
+  reasons: Record<number, string>,
 ): void {
   const key = getStorageKey(eventOccurrenceId, type);
-  if (Object.keys(changes).length === 0) {
+  if (Object.keys(changes).length === 0 && Object.keys(reasons).length === 0) {
     localStorage.removeItem(key);
     return;
   }
   const data: StoredPendingData = {
     endpoint: getEndpoint(eventOccurrenceId, type),
     changes,
+    reasons,
     timestamp: Date.now(),
   };
   localStorage.setItem(key, JSON.stringify(data));
@@ -65,16 +56,16 @@ export function savePendingChanges(
 export function loadPendingChanges(
   eventOccurrenceId: number,
   type: "student" | "teacher"
-): Record<number, number> {
+): { changes: Record<number, number>; reasons: Record<number, string> } {
   const key = getStorageKey(eventOccurrenceId, type);
   const raw = localStorage.getItem(key);
-  if (!raw) return {};
+  if (!raw) return { changes: {}, reasons: {} };
   try {
     const data: StoredPendingData = JSON.parse(raw);
-    return data.changes;
+    return { changes: data.changes || {}, reasons: data.reasons || {} };
   } catch {
     localStorage.removeItem(key);
-    return {};
+    return { changes: {}, reasons: {} };
   }
 }
 
@@ -86,13 +77,13 @@ export function clearPendingChanges(
   localStorage.removeItem(key);
 }
 
-// ---------------------------------------------------------------------------
-// Build PATCH payload from accumulated changes
-// ---------------------------------------------------------------------------
-
-export function buildPatchPayload(changes: Record<number, number>): {
+export function buildPatchPayload(
+  changes: Record<number, number>,
+  reasons: Record<number, string>,
+): {
   attended: number[];
   absent: number[];
+  reasons: Record<number, string>;
 } {
   const attended: number[] = [];
   const absent: number[] = [];
@@ -106,20 +97,17 @@ export function buildPatchPayload(changes: Record<number, number>): {
     }
   }
 
-  return { attended, absent };
+  return { attended, absent, reasons };
 }
-
-// ---------------------------------------------------------------------------
-// Flush a specific set of pending changes to the API
-// ---------------------------------------------------------------------------
 
 export async function flushChanges(
   endpoint: string,
-  changes: Record<number, number>
+  changes: Record<number, number>,
+  reasons: Record<number, string> = {},
 ): Promise<boolean> {
-  if (Object.keys(changes).length === 0) return true;
+  if (Object.keys(changes).length === 0 && Object.keys(reasons).length === 0) return true;
 
-  const payload = buildPatchPayload(changes);
+  const payload = buildPatchPayload(changes, reasons);
 
   try {
     await api.patch(endpoint, payload);
@@ -128,10 +116,6 @@ export async function flushChanges(
     return false;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Scan all localStorage for any pending attendance data (for startup flush)
-// ---------------------------------------------------------------------------
 
 export function getAllPendingKeys(): string[] {
   const keys: string[] = [];
@@ -155,10 +139,6 @@ export function parsePendingFromStorage(key: string): StoredPendingData | null {
   }
 }
 
-/**
- * Flush all pending attendance data found in localStorage.
- * Returns the number of successfully flushed entries.
- */
 export async function flushAllPending(): Promise<{
   flushed: number;
   failed: number;
@@ -169,12 +149,12 @@ export async function flushAllPending(): Promise<{
 
   for (const key of keys) {
     const data = parsePendingFromStorage(key);
-    if (!data || Object.keys(data.changes).length === 0) {
+    if (!data || (Object.keys(data.changes).length === 0 && Object.keys(data.reasons || {}).length === 0)) {
       localStorage.removeItem(key);
       continue;
     }
 
-    const success = await flushChanges(data.endpoint, data.changes);
+    const success = await flushChanges(data.endpoint, data.changes, data.reasons);
     if (success) {
       localStorage.removeItem(key);
       flushed++;

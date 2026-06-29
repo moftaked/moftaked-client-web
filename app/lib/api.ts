@@ -86,13 +86,17 @@ api.interceptors.response.use(
       }
     }
 
-    const err = error instanceof Error ? error : new Error(error.message ?? String(error));
-    const status = error.response?.status;
-    const data = error.response?.data;
-    if (data?.message) err.message = data.message;
-    if (status) err.message = `[${status}] ${err.message}`;
+    // Don't dispatch global error for network errors — they are expected when
+    // offline and the calling code already handles them gracefully.
+    if (error.code !== 'ERR_NETWORK') {
+      const err = error instanceof Error ? error : new Error(error.message ?? String(error));
+      const status = error.response?.status;
+      const data = error.response?.data;
+      if (data?.message) err.message = data.message;
+      if (status) err.message = `[${status}] ${err.message}`;
 
-    window.dispatchEvent(new CustomEvent("app-error", { detail: err }));
+      window.dispatchEvent(new CustomEvent("app-error", { detail: err }));
+    }
     return Promise.reject(error);
   }
 );

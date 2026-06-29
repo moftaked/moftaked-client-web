@@ -17,6 +17,7 @@ import { RouteStateProvider } from "./contexts/route-state-context";
 import { AppErrorBoundary } from "./components/error-boundary";
 import { toast } from "sonner";
 import { Toaster } from "./components/ui/sonner";
+import { Progress } from "./components/ui/progress";
 import { captureConsole } from "./lib/console-buffer";
 
 captureConsole();
@@ -74,8 +75,66 @@ export default function App() {
     if ("serviceWorker" in navigator) {
       const registerPWA = () => {
         import("virtual:pwa-register").then(({ registerSW }) => {
+          let progressToastId: string | number | null = null;
+
           const updateSW = registerSW({
+            onRegistered(registration) {
+              if (!registration) return;
+
+              const onMessage = (event: MessageEvent) => {
+                if (event.data?.type === "PRECACHE_PROGRESS") {
+                  const { current, total } = event.data;
+                  const percent = Math.round((current / total) * 100);
+
+                  if (!progressToastId) {
+                    progressToastId = toast(
+                      <div dir="rtl" className="w-full">
+                        <p className="text-sm font-medium mb-2">جاري تحميل التحديث...</p>
+                        <Progress value={percent} className="w-full" />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {current}/{total} — {percent}%
+                        </p>
+                      </div>,
+                      { duration: Infinity }
+                    );
+                  } else {
+                    toast(
+                      <div dir="rtl" className="w-full">
+                        <p className="text-sm font-medium mb-2">جاري تحميل التحديث...</p>
+                        <Progress value={percent} className="w-full" />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {current}/{total} — {percent}%
+                        </p>
+                      </div>,
+                      { id: progressToastId }
+                    );
+                  }
+                }
+              };
+
+              navigator.serviceWorker.addEventListener("message", onMessage);
+
+              registration.addEventListener("updatefound", () => {
+                const installingWorker = registration.installing;
+                if (!installingWorker) return;
+
+                progressToastId = null;
+
+                installingWorker.addEventListener("statechange", () => {
+                  if (installingWorker.state === "redundant") {
+                    if (progressToastId) {
+                      toast.dismiss(progressToastId);
+                      progressToastId = null;
+                    }
+                  }
+                });
+              });
+            },
             onNeedRefresh() {
+              if (progressToastId) {
+                toast.dismiss(progressToastId);
+                progressToastId = null;
+              }
               const toastId = toast("يتوفر تحديث جديد", {
                 description: "انقر للتحديث وإعادة التحميل",
                 action: {

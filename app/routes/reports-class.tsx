@@ -116,28 +116,6 @@ interface ChronicAbsentee {
   phone_numbers: string | null;
 }
 
-interface AbsenceReportPerson {
-  person_id: number;
-  person_name: string;
-  absence_reason: string | null;
-  phone_numbers: string | null;
-}
-
-interface AbsenceReportEvent {
-  event_id: number;
-  event_name: string;
-  students: AbsenceReportPerson[];
-  teachers: AbsenceReportPerson[];
-}
-
-interface AbsenceReportData {
-  class_id: number;
-  class_name: string;
-  school_name: string;
-  date: string;
-  events: AbsenceReportEvent[];
-}
-
 // ---------------------------------------------------------------------------
 // Loader
 // ---------------------------------------------------------------------------
@@ -247,10 +225,6 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
   const [rangedStartDate, setChronicStartDate] = useState(thirtyDaysAgo);
   const [rangedEndDate, setChronicEndDate] = useState(today);
 
-  const [absenceReport, setAbsenceReport] = useState<AbsenceReportData | null>(null);
-  const [absenceReportLoading, setAbsenceReportLoading] = useState(false);
-  const [reportCopied, setReportCopied] = useState(false);
-
   const isLeaderOrManager = role === "leader" || role === "manager" || role === "admin";
 
   // Sync selected date back to context
@@ -340,72 +314,6 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
         return next;
       });
     }
-  }
-
-  // Fetch absence report when absentees tab is active
-  useEffect(() => {
-    if (!isLeaderOrManager || activeTab !== "absentees") return;
-    if (!selectedDate) return;
-    setAbsenceReportLoading(true);
-    api
-      .get<{ success: boolean; data: AbsenceReportData }>(
-        `/reports/class/${classId}/absence-report?date=${selectedDate}`
-      )
-      .then((res) => setAbsenceReport(res.data.data))
-      .catch(() => setAbsenceReport(null))
-      .finally(() => setAbsenceReportLoading(false));
-  }, [classId, selectedDate, activeTab, isLeaderOrManager]);
-
-  function buildAbsenceReportText(): string {
-    if (!absenceReport) return "";
-    const lines: string[] = [];
-    lines.push("تقرير الغياب");
-    lines.push(`الفصل: ${absenceReport.class_name}`);
-    lines.push(`المدرسة: ${absenceReport.school_name}`);
-    lines.push(`التاريخ: ${formatDisplayDate(absenceReport.date)}`);
-    lines.push("");
-
-    for (const ev of absenceReport.events) {
-      lines.push(`── ${ev.event_name} ──`);
-      lines.push("");
-
-      if (ev.students.length > 0) {
-        lines.push("المخدومين:");
-        ev.students.forEach((s, i) => {
-          lines.push(`  ${i + 1}. ${s.person_name} - ${s.absence_reason || "(بدون سبب)"}`);
-        });
-        lines.push("");
-      }
-
-      if (ev.teachers.length > 0) {
-        lines.push("الخدام:");
-        ev.teachers.forEach((t, i) => {
-          lines.push(`  ${i + 1}. ${t.person_name} - ${t.absence_reason || "(بدون سبب)"}`);
-        });
-        lines.push("");
-      }
-    }
-
-    return lines.join("\n");
-  }
-
-  function handleCopyReport() {
-    const text = buildAbsenceReportText();
-    if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
-      setReportCopied(true);
-      toast.success("تم نسخ التقرير", { duration: 2000 });
-      setTimeout(() => setReportCopied(false), 2000);
-    }).catch(() => {
-      toast.error("فشل نسخ التقرير");
-    });
-  }
-
-  function handleShareWhatsApp() {
-    const text = buildAbsenceReportText();
-    if (!text) return;
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
   }
 
   // Fetch ranged absentees for both types
@@ -612,39 +520,6 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
                       <EmptyState message="لا يوجد غياب في هذا التاريخ" />
                     ) : (
                       <div className="flex flex-col gap-4">
-                        {/* Action buttons */}
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5"
-                            disabled={absenceReportLoading}
-                            onClick={handleCopyReport}
-                          >
-                            {reportCopied ? (
-                              <Check className="size-3.5" />
-                            ) : (
-                              <ClipboardCopy className="size-3.5" />
-                            )}
-                            {reportCopied ? "تم النسخ" : "نسخ التقرير"}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5"
-                            disabled={absenceReportLoading}
-                            onClick={handleShareWhatsApp}
-                          >
-                            <Share2 className="size-3.5" />
-                            واتساب
-                          </Button>
-                          {absenceReportLoading && (
-                            <div className="flex-1 flex justify-end">
-                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                            </div>
-                          )}
-                        </div>
-
                         {summary.events.map((event) => (
                           <AbsenteesPanel
                             key={event.event_id}
@@ -653,6 +528,7 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
                             loading={absenteesLoading.has(event.event_id)}
                             onLoad={() => fetchAbsentees(event.event_id)}
                             classId={classId}
+                            date={selectedDate}
                           />
                         ))}
                       </div>
@@ -873,21 +749,73 @@ function AbsenteesPanel({
   loading,
   onLoad,
   classId,
+  date,
 }: {
   event: EventSummary;
   data?: AbsenteesData;
   loading: boolean;
   onLoad: () => void;
   classId: string;
+  date: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [activeAbsenceTab, setActiveAbsenceTab] = useState<"student" | "teacher">("teacher");
+  const [eventCopied, setEventCopied] = useState(false);
 
   function handleToggle() {
     if (!expanded && !data) {
       onLoad();
     }
     setExpanded(!expanded);
+  }
+
+  function buildEventReportText(): string {
+    if (!data) return "";
+    const lines: string[] = [];
+    lines.push(`تقرير غياب ${event.event_name}`);
+    lines.push(`التاريخ: ${formatDisplayDate(date)}`);
+    lines.push("");
+
+    if (activeAbsenceTab === "student") {
+      const bd = event.breakdown.find((b) => b.person_type === "student");
+      if (bd) {
+        lines.push(`المخدومين: ${bd.attended}/${bd.total} (${bd.rate}%)`);
+        lines.push("");
+      }
+      data.students.forEach((s, i) => {
+        lines.push(`  ${i + 1}. ${s.person_name} - ${s.absence_reason || "(بدون سبب)"}`);
+      });
+    } else {
+      const bd = event.breakdown.find((b) => b.person_type === "teacher");
+      if (bd) {
+        lines.push(`الخدام: ${bd.attended}/${bd.total} (${bd.rate}%)`);
+        lines.push("");
+      }
+      data.teachers.forEach((t, i) => {
+        lines.push(`  ${i + 1}. ${t.person_name} - ${t.absence_reason || "(بدون سبب)"}`);
+      });
+    }
+
+    return lines.join("\n");
+  }
+
+  function handleCopyEvent() {
+    const text = buildEventReportText();
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setEventCopied(true);
+      toast.success("تم نسخ التقرير", { duration: 2000 });
+      setTimeout(() => setEventCopied(false), 2000);
+    }).catch(() => {
+      toast.error("فشل نسخ التقرير");
+    });
+  }
+
+  function handleShareEventWhatsApp() {
+    const text = buildEventReportText();
+    if (!text) return;
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
   }
 
   const studentBd = event.breakdown.find((b) => b.person_type === "student");
@@ -956,6 +884,32 @@ function AbsenteesPanel({
                   </Button>
                 </div>
               )}
+
+              {/* Per-event action buttons */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={handleCopyEvent}
+                >
+                  {eventCopied ? (
+                    <Check className="size-3.5" />
+                  ) : (
+                    <ClipboardCopy className="size-3.5" />
+                  )}
+                  {eventCopied ? "تم النسخ" : "نسخ التقرير"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={handleShareEventWhatsApp}
+                >
+                  <Share2 className="size-3.5" />
+                  واتساب
+                </Button>
+              </div>
 
               {activeAbsenceTab === "student" && hasAbsentStudents && (
                 <AbsenteeTable

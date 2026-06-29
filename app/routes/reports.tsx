@@ -349,76 +349,62 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
                 title="الفصول"
                 description="تقارير تفصيلية للفصول اللي بتخدم فيها"
               />
-              <div className="flex flex-col gap-6">
-                {Object.entries(
-                  access.leaderClasses.reduce<Record<string, ClassInfo[]>>(
-                    (acc, cls) => {
-                      (acc[cls.school_name] ??= []).push(cls);
-                      return acc;
-                    },
-                    {}
-                  )
-                ).map(([schoolName, classes]) => (
-                  <div key={schoolName} className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2">
-                      <School className="size-4 text-muted-foreground" />
-                      <h3 className="text-sm font-semibold text-muted-foreground">
-                        {schoolName}
-                      </h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {classes.map((cls) => (
-                        <ClassReportCard
-                          key={`leader-${cls.class_id}`}
-                          cls={cls}
-                          summary={summaryMap.get(cls.class_id)}
-                          isLeader
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex flex-col gap-3">
+                {(() => {
+                  const leaderEntries = Object.entries(
+                    access.leaderClasses.reduce<Record<string, ClassInfo[]>>(
+                      (acc, cls) => {
+                        (acc[cls.school_name] ??= []).push(cls);
+                        return acc;
+                      },
+                      {}
+                    )
+                  );
+                  return leaderEntries.map(([schoolName, classes]) => (
+                    <SchoolGroup
+                      key={schoolName}
+                      schoolName={schoolName}
+                      classes={classes}
+                      summaryMap={summaryMap}
+                      isLeader
+                      defaultExpanded={leaderEntries.length === 1}
+                    />
+                  ));
+                })()}
               </div>
             </section>
           )}
 
-          {/* Teacher Classes Section */}
-          {access.teacherClasses.length > 0 && (
+          {/* Teacher Classes Section (hidden for managers/admins — redundant) */}
+          {access.teacherClasses.length > 0 && !access.isManager && (
             <section>
               <SectionHeader
                 icon={GraduationCap}
-                title="الفصول (خادم)"
+                title="الفصول"
                 description="تقارير حضور المخدومين في فصولك"
               />
-              <div className="flex flex-col gap-6">
-                {Object.entries(
-                  access.teacherClasses.reduce<Record<string, ClassInfo[]>>(
-                    (acc, cls) => {
-                      (acc[cls.school_name] ??= []).push(cls);
-                      return acc;
-                    },
-                    {}
-                  )
-                ).map(([schoolName, classes]) => (
-                  <div key={schoolName} className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2">
-                      <School className="size-4 text-muted-foreground" />
-                      <h3 className="text-sm font-semibold text-muted-foreground">
-                        {schoolName}
-                      </h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {classes.map((cls) => (
-                        <ClassReportCard
-                          key={`teacher-${cls.class_id}`}
-                          cls={cls}
-                          summary={summaryMap.get(cls.class_id)}
-                          isLeader={false}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex flex-col gap-3">
+                {(() => {
+                  const teacherEntries = Object.entries(
+                    access.teacherClasses.reduce<Record<string, ClassInfo[]>>(
+                      (acc, cls) => {
+                        (acc[cls.school_name] ??= []).push(cls);
+                        return acc;
+                      },
+                      {}
+                    )
+                  );
+                  return teacherEntries.map(([schoolName, classes]) => (
+                    <SchoolGroup
+                      key={schoolName}
+                      schoolName={schoolName}
+                      classes={classes}
+                      summaryMap={summaryMap}
+                      isLeader={false}
+                      defaultExpanded={teacherEntries.length === 1}
+                    />
+                  ));
+                })()}
               </div>
             </section>
           )}
@@ -906,6 +892,58 @@ function ClassReportCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// School Group (collapsible)
+// ---------------------------------------------------------------------------
+
+function SchoolGroup({
+  schoolName,
+  classes,
+  summaryMap,
+  isLeader,
+  defaultExpanded = false,
+}: {
+  schoolName: string;
+  classes: ClassInfo[];
+  summaryMap: Map<number, ClassSummaryData>;
+  isLeader: boolean;
+  defaultExpanded?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center gap-2 w-full text-right cursor-pointer py-1.5"
+      >
+        <ChevronLeft
+          className={cn(
+            "size-4 text-muted-foreground transition-transform shrink-0",
+            expanded && "-rotate-90"
+          )}
+        />
+        <School className="size-4 text-muted-foreground shrink-0" />
+        <h3 className="text-sm font-semibold text-muted-foreground truncate">
+          {schoolName}
+        </h3>
+      </button>
+      {expanded && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {classes.map((cls) => (
+            <ClassReportCard
+              key={`${isLeader ? "leader" : "teacher"}-${cls.class_id}`}
+              cls={cls}
+              summary={summaryMap.get(cls.class_id)}
+              isLeader={isLeader}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

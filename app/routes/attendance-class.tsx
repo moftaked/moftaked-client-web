@@ -48,6 +48,7 @@ interface CachedEventsData {
   studentEvents: Event[];
   teacherEvents: Event[];
   role: UserRole;
+  className: string;
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
@@ -59,11 +60,13 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
         success: boolean;
         data: EventsData;
         role: UserRole;
+        className: string;
       }>(`/events/classes/${classId}`);
       return {
         studentEvents: eventsRes.data.data.studentEvents,
         teacherEvents: eventsRes.data.data.teacherEvents,
         role: eventsRes.data.role,
+        className: eventsRes.data.className,
       };
     }
   );
@@ -72,6 +75,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
     studentEvents: cached.studentEvents,
     teacherEvents: cached.teacherEvents,
     role: cached.role,
+    className: cached.className,
   };
 }
 
@@ -94,7 +98,7 @@ export function HydrateFallback() {
 // ---------------------------------------------------------------------------
 
 export default function AttendanceClass({ loaderData }: Route.ComponentProps) {
-  const { classId, studentEvents, teacherEvents, role } = loaderData;
+  const { classId, studentEvents, teacherEvents, role, className } = loaderData;
   const isAdmin = role === "leader" || role === "manager" || role === "admin";
 
   const allEvents = new Map<number, Event>();
@@ -137,7 +141,7 @@ export default function AttendanceClass({ loaderData }: Route.ComponentProps) {
   if (uniqueEvents.length === 0) {
     return (
       <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-bold">تسجيل الحضور</h1>
+        <h1 className="text-xl font-bold">{className} — تسجيل الحضور</h1>
         <p className="text-muted-foreground">لا يوجد فعاليات في هذا الفصل</p>
       </div>
     );
@@ -146,7 +150,7 @@ export default function AttendanceClass({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">تسجيل الحضور</h1>
+        <h1 className="text-xl font-bold">{className} — تسجيل الحضور</h1>
         {isAdmin && (
           <Button onClick={() => setDialogOpen(true)} disabled={creatingDay} className="gap-2">
             {creatingDay ? (

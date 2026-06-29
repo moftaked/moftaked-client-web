@@ -11,3 +11,7 @@
 .env
 .env.development
 .vercel
+
+.claude/
+.opencode/
+.playwright-cli/

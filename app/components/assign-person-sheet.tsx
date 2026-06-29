@@ -244,6 +244,11 @@ export function AssignPersonSheet({
                                   هل أنت متأكد من إزالة{" "}
                                   <strong>{person.person_name}</strong> من فصل{" "}
                                   <strong>{pc.class_name}</strong>؟
+                                  {personClasses.length === 1 && (
+                                    <div className="mt-3 p-3 bg-destructive/15 text-destructive rounded-md text-sm font-medium">
+                                      هذا هو الفصل الوحيد المرتبط بهذا الشخص. بعد إزالته، سيتم حذف الشخص نهائياً.
+                                    </div>
+                                  )}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>

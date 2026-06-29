@@ -650,6 +650,9 @@ function PersonFormSheet({
                         ? `"${type === "student" ? (sheetState.person as Student).student_name : (sheetState.person as Teacher).teacher_name}"`
                         : ""}
                       {" من الفصل؟"}
+                      <div className="mt-3 p-3 bg-destructive/15 text-destructive rounded-md text-sm font-medium">
+                        ملاحظة: إذا كان هذا هو الفصل الوحيد للشخص، سيتم حذفه نهائياً بعد الإزالة.
+                      </div>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

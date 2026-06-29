@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import api from "~/lib/api";
 import type { Route } from "./+types/reports-person";
 import {
@@ -10,6 +11,14 @@ import {
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Badge } from "~/components/ui/badge";
+import { DatePicker } from "~/components/ui/date-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import {
   ArrowRight,
   BarChart3,
@@ -70,6 +79,9 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const personId = params.personId;
   const type = params.type;
 
+  const today = new Date().toISOString().split("T")[0];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
   const res = await api.get<{ success: boolean; data: PersonHistoryData }>(
     `/reports/person/${personId}/history?type=${type}&limit=20`
   );
@@ -77,7 +89,9 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   return {
     personId,
     type,
-    data: res.data.data,
+    initialData: res.data.data,
+    initialStartDate: thirtyDaysAgo,
+    initialEndDate: today,
   };
 }
 
@@ -106,47 +120,124 @@ export function HydrateFallback() {
 // ---------------------------------------------------------------------------
 
 export default function ReportsPerson({ loaderData }: Route.ComponentProps) {
-  const { type, data } = loaderData;
+  const { type, personId, initialData, initialStartDate, initialEndDate } = loaderData;
   const typeLabel = type === "student" ? "مخدوم" : "خادم";
   const TypeIcon = type === "student" ? GraduationCap : Users;
+
+  const [data, setData] = useState<PersonHistoryData>(initialData);
+  const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState(initialStartDate);
+  const [endDate, setEndDate] = useState(initialEndDate);
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    api
+      .get<{ success: boolean; data: PersonHistoryData }>(
+        `/reports/person/${personId}/history?type=${type}&limit=20&start_date=${startDate}&end_date=${endDate}`
+      )
+      .then((res) => {
+        setData(res.data.data);
+        if (res.data.data.events.length > 0) {
+          setSelectedEventId(res.data.data.events[0].event_id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [personId, type, startDate, endDate]);
+
+  const selectedEvent = selectedEventId
+    ? data.events.find((e) => e.event_id === selectedEventId)
+    : null;
+
+  const filteredOverall = selectedEvent
+    ? {
+        total_occurrences: selectedEvent.total_occurrences,
+        attended: selectedEvent.attended_count,
+        absent: selectedEvent.total_occurrences - selectedEvent.attended_count,
+        rate: selectedEvent.rate,
+      }
+    : data.overall;
 
   return (
     <div className="flex flex-col gap-5">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold truncate flex items-center gap-2">
-            <User className="size-5 text-primary shrink-0" />
-            {data.person_name}
-          </h1>
-          <div className="flex items-center gap-2 mt-0.5">
-            <Badge variant="secondary" className="text-xs gap-1">
-              <TypeIcon className="size-3" />
-              {typeLabel}
-            </Badge>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold truncate flex items-center gap-2">
+              <User className="size-5 text-primary shrink-0" />
+              {data.person_name}
+            </h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <Badge variant="secondary" className="text-xs gap-1">
+                <TypeIcon className="size-3" />
+                {typeLabel}
+              </Badge>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Overall Stats Card */}
-      <OverallStatsCard overall={data.overall} />
+      {/* Date range picker */}
+      <div className="flex items-center gap-2" dir="rtl">
+        <span className="text-sm text-muted-foreground whitespace-nowrap">من</span>
+        <DatePicker
+          value={startDate}
+          onChange={(date) => setStartDate(date)}
+        />
+        <span className="text-sm text-muted-foreground whitespace-nowrap">إلى</span>
+        <DatePicker
+          value={endDate}
+          onChange={(date) => setEndDate(date)}
+        />
+      </div>
 
-      {/* Per-Event Histories */}
-      {data.events.length === 0 ? (
-        <EmptyState message="لا يوجد بيانات حضور لهذا الشخص بعد" />
-      ) : (
+      {/* Loading state */}
+      {loading ? (
         <div className="flex flex-col gap-4">
-          <h2 className="text-base font-semibold flex items-center gap-2">
-            <BookOpen className="size-4 text-muted-foreground" />
-            الحضور حسب الحدث
-          </h2>
-          {data.events.map((event) => (
-            <EventHistoryCard
-              key={`${event.event_id}-${event.class_id}`}
-              event={event}
-            />
-          ))}
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-40 rounded-xl" />
+          <Skeleton className="h-40 rounded-xl" />
         </div>
+      ) : (
+        <>
+          {/* Event selector */}
+          {data.events.length > 0 && (
+            <div className="flex items-center gap-2" dir="rtl">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">الحدث</span>
+              <Select
+                value={String(selectedEventId)}
+                onValueChange={(v) => setSelectedEventId(Number(v))}
+              >
+                <SelectTrigger className="flex-1 max-w-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {data.events.map((event) => (
+                    <SelectItem key={event.event_id} value={String(event.event_id)}>
+                      {event.event_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Overall Stats Card */}
+          <OverallStatsCard overall={filteredOverall} />
+
+          {/* Per-Event Histories */}
+          {selectedEvent && (
+            <div className="flex flex-col gap-4">
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <BookOpen className="size-4 text-muted-foreground" />
+                الحضور حسب الحدث
+              </h2>
+              <EventHistoryCard event={selectedEvent} />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -180,7 +271,7 @@ function OverallStatsCard({ overall }: { overall: OverallStats }) {
                 </span>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">نسبة الحضور الكلية</p>
+                <p className="text-sm text-muted-foreground">نسبة الالتزام</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   من {overall.total_occurrences} مرة
                 </p>

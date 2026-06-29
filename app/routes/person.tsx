@@ -17,17 +17,6 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "~/components/ui/alert-dialog";
-import {
   User,
   Phone,
   MapPin,
@@ -38,7 +27,6 @@ import {
   BookOpen,
   Maximize,
   ImageUp,
-  Trash2,
   Pencil,
 } from "lucide-react";
 import {
@@ -142,7 +130,6 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
   const [photoLink, setPhotoLink] = useState(person.photo_link);
 
   const [uploading, setUploading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [cropperImageSrc, setCropperImageSrc] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -365,23 +352,6 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
     // When there IS a photo, the PopoverTrigger handles the click
   }
 
-  async function handleDelete() {
-    setDeleting(true);
-    try {
-      const paramKey = type === "student" ? "students" : "teachers";
-      await Promise.all(
-        person.classes.map((cls) =>
-          api.delete(`/classes/${cls.class_id}/${paramKey}/${personId}`)
-        )
-      );
-      toast.success("تم حذف الشخص");
-      navigate("/", { replace: true });
-    } catch {
-      toast.error("حصلت مشكلة في حذف الشخص");
-      setDeleting(false);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-6 max-w-lg mx-auto pb-8">
       {/* Photo + Name Section */}
@@ -595,52 +565,6 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
           )}
         </CardContent>
       </Card>
-
-      {/* Delete Button */}
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="destructive"
-            className="w-full"
-            disabled={deleting}
-          >
-            {deleting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Trash2 className="size-4" />
-            )}
-            حذف الشخص
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              حذف "{person.person_name}"؟
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              سيتم حذف الشخص من جميع الفصول المرتبطة به.
-              {person.classes.length > 0 && (
-                <> سيفقد الوصول إلى: {person.classes.map((c) => c.class_name).join("، ")}.</>
-              )}
-              هذا الإجراء لا يمكن التراجع عنه.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>إلغاء</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                "حذف"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Image Cropper Overlay */}
       {showCropper && cropperImageSrc && (

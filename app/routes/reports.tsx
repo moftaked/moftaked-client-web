@@ -346,8 +346,8 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
             <section>
               <SectionHeader
                 icon={Users}
-                title="الفصول (خادم / مشرف)"
-                description="تقارير تفصيلية للفصول التي تشرف عليها"
+                title="الفصول"
+                description="تقارير تفصيلية للفصول اللي بتخدم فيها"
               />
               <div className="flex flex-col gap-6">
                 {Object.entries(
@@ -578,6 +578,7 @@ function ManagerSchoolCard({
   school: ManagedSchool;
   selectedDate: string;
 }) {
+  const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [comparison, setComparison] = useState<{
     school_name: string;
@@ -672,6 +673,35 @@ function ManagerSchoolCard({
       ? Math.round((attendedPersons / totalPersons) * 100)
       : 0;
 
+  const sortedClasses = useMemo(
+    () =>
+      [...filteredClasses]
+        .map((cls) => {
+          const clsTotal = cls.events.reduce((s, e) => {
+            const bd = e.breakdown.find(
+              (b) => b.person_type === selectedPersonType
+            );
+            return s + (bd?.total ?? 0);
+          }, 0);
+          const clsAttended = cls.events.reduce((s, e) => {
+            const bd = e.breakdown.find(
+              (b) => b.person_type === selectedPersonType
+            );
+            return s + (bd?.attended ?? 0);
+          }, 0);
+          const rate =
+            clsTotal > 0
+              ? Math.round((clsAttended / clsTotal) * 100)
+              : 0;
+          return { ...cls, rate };
+        })
+        .sort((a, b) => b.rate - a.rate),
+    [filteredClasses, selectedPersonType]
+  );
+
+  const visibleClasses = showAll ? sortedClasses : sortedClasses.slice(0, 4);
+  const hasMore = sortedClasses.length > 4;
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
@@ -718,51 +748,34 @@ function ManagerSchoolCard({
               </div>
             </div>
 
-            {/* Per-class mini list (sorted by attendance rate) */}
+            {/* Per-class list (sorted by attendance rate) */}
             <div className="flex flex-col gap-1.5">
-              {filteredClasses
-                .map((cls) => {
-                  const clsTotal = cls.events.reduce((s, e) => {
-                    const bd = e.breakdown.find(
-                      (b) => b.person_type === selectedPersonType
-                    );
-                    return s + (bd?.total ?? 0);
-                  }, 0);
-                  const clsAttended = cls.events.reduce((s, e) => {
-                    const bd = e.breakdown.find(
-                      (b) => b.person_type === selectedPersonType
-                    );
-                    return s + (bd?.attended ?? 0);
-                  }, 0);
-                  const rate =
-                    clsTotal > 0
-                      ? Math.round((clsAttended / clsTotal) * 100)
-                      : 0;
-                  return { ...cls, rate };
-                })
-                .sort((a, b) => b.rate - a.rate)
-                .slice(0, 4)
-                .map((cls) => (
-                  <Link
-                    key={cls.class_id}
-                    to={`/reports/class/${cls.class_id}`}
-                    className="flex items-center justify-between text-sm hover:bg-accent rounded px-2 py-1.5 transition-colors"
-                  >
-                    <span className="truncate">{cls.class_name}</span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <MiniBar rate={cls.rate} />
-                      <span className="text-xs text-muted-foreground w-8 text-left">
-                        {cls.rate}%
-                      </span>
-                    </div>
-                  </Link>
-                ))}
+              {visibleClasses.map((cls) => (
+                <Link
+                  key={cls.class_id}
+                  to={`/reports/class/${cls.class_id}`}
+                  className="flex items-center justify-between text-sm hover:bg-accent rounded px-2 py-1.5 transition-colors"
+                >
+                  <span className="truncate">{cls.class_name}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <MiniBar rate={cls.rate} />
+                    <span className="text-xs text-muted-foreground w-8 text-left">
+                      {cls.rate}%
+                    </span>
+                  </div>
+                </Link>
+              ))}
             </div>
 
-            {filteredClasses.length > 4 && (
-              <p className="text-xs text-muted-foreground text-center">
-                + {filteredClasses.length - 4} فصول أخرى
-              </p>
+            {hasMore && (
+              <button
+                onClick={() => setShowAll((v) => !v)}
+                className="text-xs text-muted-foreground hover:text-primary transition-colors text-center cursor-pointer"
+              >
+                {showAll
+                  ? "عرض أقل"
+                  : `+ ${sortedClasses.length - 4} فصول أخرى`}
+              </button>
             )}
           </div>
         ) : (

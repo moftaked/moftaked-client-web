@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useBlocker } from "react-router";
 import { useSearchFilter } from "~/contexts/search-context";
 import api from "~/lib/api";
 import type { Route } from "./+types/attendance-event";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import {
   Loader2,
   Check,
@@ -16,6 +17,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Trash2,
+  MessageSquareText,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -74,6 +76,7 @@ interface AttendancePerson {
   person_id: number;
   person_name: string;
   attended: number;
+  absence_reason?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -388,6 +391,12 @@ function AttendanceList({
 
   // Accumulated changes since last successful flush: person_id → attended(1/0)
   const pendingRef = useRef<Record<number, number>>({});
+  // Accumulated reasons for absent people: person_id → reason text
+  const reasonsRef = useRef<Record<number, string>>({});
+  // Which person's reason field is currently expanded
+  const [reasonExpanded, setReasonExpanded] = useState<Record<number, boolean>>({});
+  // Whether a textarea currently has unsaved content (for navigation guard)
+  const unsavedRef = useRef(false);
   // We keep a "dirty" flag to avoid flushing when nothing changed
   const dirtyRef = useRef(false);
   // Track if component is mounted
@@ -397,6 +406,37 @@ function AttendanceList({
 
   const endpoint = getEndpoint(eventOccurrenceId, type);
 
+  // ------- navigation guard -------
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      currentLocation.pathname !== nextLocation.pathname && unsavedRef.current
+  );
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      const leave = window.confirm(
+        "لديك تغييرات غير محفوظة في سبب الغياب. هل تريد المغادرة؟"
+      );
+      if (leave) {
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    }
+  }, [blocker]);
+
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (unsavedRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
   // ------- helpers that touch refs without triggering re-render -------
 
   const markDirty = useCallback(() => {
@@ -405,49 +445,60 @@ function AttendanceList({
   }, []);
 
   const persistToStorage = useCallback(() => {
-    savePendingChanges(eventOccurrenceId, type, pendingRef.current);
+    savePendingChanges(eventOccurrenceId, type, pendingRef.current, reasonsRef.current);
   }, [eventOccurrenceId, type]);
 
   // ------- flush logic -------
 
   const flush = useCallback(async (): Promise<boolean> => {
     const changes = { ...pendingRef.current };
-    if (Object.keys(changes).length === 0) {
-      // Nothing to flush
+    const reasons = { ...reasonsRef.current };
+    if (Object.keys(changes).length === 0 && Object.keys(reasons).length === 0) {
       if (mountedRef.current) setSyncStatus("synced");
       return true;
     }
 
     if (mountedRef.current) setSyncStatus("syncing");
 
-    const success = await flushChanges(endpoint, changes);
+    const success = await flushChanges(endpoint, changes, reasons);
 
     if (!mountedRef.current) return success;
 
     if (success) {
-      // Remove only the changes we just flushed (new changes may have
-      // accumulated while the request was in flight).
-      const current = pendingRef.current;
+      const currentPending = pendingRef.current;
+      const currentReasons = reasonsRef.current;
+
+      // Clear flushed attendance toggles
       for (const key of Object.keys(changes)) {
-        // Only delete if the value hasn't changed since we started flushing
-        if (current[Number(key)] === changes[Number(key)]) {
-          delete current[Number(key)];
+        const id = Number(key);
+        if (currentPending[id] === changes[id]) {
+          delete currentPending[id];
         }
       }
-      dirtyRef.current = Object.keys(current).length > 0;
+
+      // Clear flushed reasons (only those that haven't changed since flush)
+      for (const key of Object.keys(reasons)) {
+        const id = Number(key);
+        if (currentReasons[id] === reasons[id]) {
+          delete currentReasons[id];
+        }
+      }
+
+      dirtyRef.current = Object.keys(currentPending).length > 0;
       persistToStorage();
 
-      if (Object.keys(current).length === 0) {
+      if (Object.keys(currentPending).length === 0 && Object.keys(currentReasons).length === 0) {
         setSyncStatus("synced");
         clearPendingChanges(eventOccurrenceId, type);
       } else {
-        // Still have newer changes — keep pending
         setSyncStatus("pending");
       }
 
+      // Invalidate attendance cache so fresh data is fetched on next mount
+      removeCached(occurrenceAttendanceKey(eventOccurrenceId, type));
+
       return true;
     } else {
-      // Failed — keep changes in storage for later retry
       persistToStorage();
       setSyncStatus("error");
       return false;
@@ -490,13 +541,10 @@ function AttendanceList({
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      // Persist any remaining changes to localStorage so the global
-      // provider can pick them up later.
       if (Object.keys(pendingRef.current).length > 0) {
-        savePendingChanges(eventOccurrenceId, type, pendingRef.current);
-        // Fire-and-forget flush attempt
+        savePendingChanges(eventOccurrenceId, type, pendingRef.current, reasonsRef.current);
         const ep = getEndpoint(eventOccurrenceId, type);
-        flushChanges(ep, { ...pendingRef.current }).then((ok) => {
+        flushChanges(ep, { ...pendingRef.current }, { ...reasonsRef.current }).then((ok) => {
           if (ok) clearPendingChanges(eventOccurrenceId, type);
         });
       }
@@ -542,16 +590,21 @@ function AttendanceList({
 
       // 3. Merge any pending changes from localStorage (offline queue)
       const stored = loadPendingChanges(eventOccurrenceId, type);
-      if (Object.keys(stored).length > 0) {
-        pendingRef.current = { ...stored };
+      if (Object.keys(stored.changes).length > 0 || Object.keys(stored.reasons).length > 0) {
+        pendingRef.current = { ...stored.changes };
+        reasonsRef.current = { ...stored.reasons };
         dirtyRef.current = true;
         setSyncStatus("pending");
 
         list = list.map((p) => {
-          if (stored[p.person_id] !== undefined) {
-            return { ...p, attended: stored[p.person_id] };
+          let updated = { ...p };
+          if (stored.changes[p.person_id] !== undefined) {
+            updated.attended = stored.changes[p.person_id];
           }
-          return p;
+          if (!updated.attended && stored.reasons[p.person_id]) {
+            updated.absence_reason = stored.reasons[p.person_id];
+          }
+          return updated;
         });
       }
 
@@ -567,22 +620,76 @@ function AttendanceList({
     };
   }, [endpoint, eventOccurrenceId, type]);
 
-  // ------- toggle handler -------
+  // ------- toggle attendance (circle click) -------
 
-  function toggleAttendance(person: AttendancePerson) {
+  function handleToggleAttendance(person: AttendancePerson) {
+    const id = person.person_id;
     const newAttended = person.attended ? 0 : 1;
 
-    // Optimistically update UI
     setPersons((prev) =>
       prev.map((p) =>
-        p.person_id === person.person_id ? { ...p, attended: newAttended } : p
+        p.person_id === id ? { ...p, attended: newAttended, absence_reason: newAttended ? null : p.absence_reason } : p
       )
     );
 
-    // Accumulate change
-    pendingRef.current[person.person_id] = newAttended;
+    pendingRef.current[id] = newAttended;
+
+    if (newAttended) {
+      delete reasonsRef.current[id];
+      setReasonExpanded((prev) => ({ ...prev, [id]: false }));
+    }
+
     persistToStorage();
     markDirty();
+  }
+
+  // ------- reason editor (name click, only when absent) -------
+
+  function handleOpenReason(personId: number) {
+    setReasonExpanded((prev) => {
+      const current = prev[personId] ?? false;
+      return { ...prev, [personId]: !current };
+    });
+  }
+
+  // ------- reason save / mark present -------
+
+  function handleReasonChange(personId: number, reason: string) {
+    unsavedRef.current = true;
+    setPersons((prev) =>
+      prev.map((p) =>
+        p.person_id === personId ? { ...p, absence_reason: reason } : p
+      )
+    );
+  }
+
+  function handleReasonBlur(personId: number, reason: string) {
+    reasonsRef.current[personId] = reason;
+    persistToStorage();
+
+    if (reason) {
+      markDirty();
+    } else {
+      delete reasonsRef.current[personId];
+      persistToStorage();
+    }
+
+    unsavedRef.current = false;
+  }
+
+  function handleMarkPresent(personId: number) {
+    setPersons((prev) =>
+      prev.map((p) =>
+        p.person_id === personId ? { ...p, attended: 1, absence_reason: null } : p
+      )
+    );
+
+    pendingRef.current[personId] = 1;
+    delete reasonsRef.current[personId];
+    persistToStorage();
+    markDirty();
+
+    setReasonExpanded((prev) => ({ ...prev, [personId]: false }));
   }
 
   // ------- render -------
@@ -633,36 +740,84 @@ function AttendanceList({
         <SyncIndicator status={syncStatus} />
       </div>
 
-      {filteredPersons.map((person) => (
-        <button
-          key={person.person_id}
-          type="button"
-          className={cn(
-            "flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-start",
-            "hover:bg-accent active:bg-accent/80",
-            person.attended
-              ? "bg-primary/10 dark:bg-primary/20"
-              : "bg-transparent"
-          )}
-          onClick={() => toggleAttendance(person)}
-        >
+      {filteredPersons.map((person) => {
+        const isExpanded = reasonExpanded[person.person_id] ?? false;
+        const hasReason = !!(
+          !person.attended &&
+          (reasonsRef.current[person.person_id] || person.absence_reason)
+        );
+        const displayReason =
+          reasonsRef.current[person.person_id] ?? person.absence_reason ?? "";
+
+        return (
           <div
+            key={person.person_id}
             className={cn(
-              "flex items-center justify-center size-8 rounded-full border-2 shrink-0 transition-colors",
+              "rounded-lg transition-colors",
               person.attended
-                ? "bg-primary border-primary text-primary-foreground"
-                : "border-muted-foreground/40"
+                ? "bg-primary/10 dark:bg-primary/20"
+                : "bg-transparent"
             )}
           >
-            {person.attended ? (
-              <Check className="size-4" />
-            ) : (
-              <X className="size-4 text-muted-foreground/40" />
+            <div className="flex items-center gap-3 px-3 py-3">
+              <button
+                type="button"
+                className={cn(
+                  "flex items-center justify-center size-8 rounded-full border-2 shrink-0 transition-colors",
+                  person.attended
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : "border-muted-foreground/40 hover:bg-muted-foreground/10"
+                )}
+                onClick={() => handleToggleAttendance(person)}
+              >
+                {person.attended ? (
+                  <Check className="size-4" />
+                ) : (
+                  <X className="size-4 text-muted-foreground/40" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                className={cn(
+                  "text-base text-start grow rounded px-1 -mx-1 transition-colors",
+                  !person.attended && "hover:bg-accent"
+                )}
+                onClick={() => {
+                  if (!person.attended) handleOpenReason(person.person_id);
+                }}
+              >
+                <span>{person.person_name}</span>
+                {hasReason && !isExpanded && (
+                  <MessageSquareText className="size-3.5 text-muted-foreground/60 inline mr-1.5" />
+                )}
+              </button>
+            </div>
+
+            {!person.attended && isExpanded && (
+              <div className="px-12 pb-3 pt-0 flex flex-col gap-2">
+                <Input
+                  placeholder="سبب الغياب (اختياري)"
+                  className="text-sm"
+                  dir="rtl"
+                  defaultValue={displayReason}
+                  onFocus={() => { unsavedRef.current = true; }}
+                  onChange={(e) => handleReasonChange(person.person_id, e.target.value)}
+                  onBlur={(e) => handleReasonBlur(person.person_id, e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs self-start"
+                  onClick={() => setReasonExpanded((prev) => ({ ...prev, [person.person_id]: false }))}
+                >
+                  تم
+                </Button>
+              </div>
             )}
           </div>
-          <span className="text-base grow">{person.person_name}</span>
-        </button>
-      ))}
+        );
+      })}
     </div>
   );
 }

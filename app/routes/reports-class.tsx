@@ -316,28 +316,43 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
     }
   }
 
-  // Fetch ranged absentees for both types
+  // Fetch ranged absentees
   useEffect(() => {
-    if (!isLeaderOrManager || activeTab !== "ranged") return;
+    if (activeTab !== "ranged") return;
     if (rangedAbsentees !== null) return;
     setChronicLoading(true);
     const params = `type=student&threshold=50&start_date=${rangedStartDate}&end_date=${rangedEndDate}`;
-    Promise.all([
+
+    if (isLeaderOrManager) {
+      Promise.all([
+        api.get<{ success: boolean; data: ChronicAbsentee[] }>(
+          `/reports/class/${classId}/ranged-absentees?${params}`
+        ),
+        api.get<{ success: boolean; data: ChronicAbsentee[] }>(
+          `/reports/class/${classId}/ranged-absentees?${params.replace("type=student", "type=teacher")}`
+        ),
+      ])
+        .then(([studentsRes, teachersRes]) =>
+          setRangedAbsentees({
+            students: studentsRes.data.data,
+            teachers: teachersRes.data.data,
+          })
+        )
+        .catch(() => setRangedAbsentees({ students: [], teachers: [] }))
+        .finally(() => setChronicLoading(false));
+    } else {
       api.get<{ success: boolean; data: ChronicAbsentee[] }>(
         `/reports/class/${classId}/ranged-absentees?${params}`
-      ),
-      api.get<{ success: boolean; data: ChronicAbsentee[] }>(
-        `/reports/class/${classId}/ranged-absentees?${params.replace("type=student", "type=teacher")}`
-      ),
-    ])
-      .then(([studentsRes, teachersRes]) =>
-        setRangedAbsentees({
-          students: studentsRes.data.data,
-          teachers: teachersRes.data.data,
-        })
       )
-      .catch(() => setRangedAbsentees({ students: [], teachers: [] }))
-      .finally(() => setChronicLoading(false));
+        .then((res) =>
+          setRangedAbsentees({
+            students: res.data.data,
+            teachers: [],
+          })
+        )
+        .catch(() => setRangedAbsentees({ students: [], teachers: [] }))
+        .finally(() => setChronicLoading(false));
+    }
   }, [classId, activeTab, isLeaderOrManager, rangedAbsentees, rangedStartDate, rangedEndDate]);
 
 
@@ -481,18 +496,14 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
                     <BarChart3 className="size-4 ml-1.5" />
                     ملخص
                   </TabsTrigger>
-                  {isLeaderOrManager && (
-                    <TabsTrigger value="absentees" className="text-xs sm:text-sm">
-                      <UserX className="size-4 ml-1.5" />
-                      الغائبين
-                    </TabsTrigger>
-                  )}
-                  {isLeaderOrManager && (
-                    <TabsTrigger value="ranged" className="text-xs sm:text-sm col-span-2 md:col-span-1">
-                      <AlertTriangle className="size-4 ml-1.5" />
-                      تقارير تفصيلية
-                    </TabsTrigger>
-                  )}
+                  <TabsTrigger value="absentees" className="text-xs sm:text-sm">
+                    <UserX className="size-4 ml-1.5" />
+                    الغائبين
+                  </TabsTrigger>
+                  <TabsTrigger value="ranged" className="text-xs sm:text-sm col-span-2 md:col-span-1">
+                    <AlertTriangle className="size-4 ml-1.5" />
+                    تقارير تفصيلية
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* ---- Overview Tab ---- */}
@@ -514,31 +525,29 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
                 </TabsContent>
 
                 {/* ---- Absentees Tab ---- */}
-                {isLeaderOrManager && (
-                  <TabsContent value="absentees" className="mt-4">
-                    {summary.events.length === 0 ? (
-                      <EmptyState message="لا يوجد غياب في هذا التاريخ" />
-                    ) : (
-                      <div className="flex flex-col gap-4">
-                        {summary.events.map((event) => (
-                          <AbsenteesPanel
-                            key={event.event_id}
-                            event={event}
-                            data={absentees.get(event.event_id)}
-                            loading={absenteesLoading.has(event.event_id)}
-                            onLoad={() => fetchAbsentees(event.event_id)}
-                            classId={classId}
-                            date={selectedDate}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </TabsContent>
-                )}
+                <TabsContent value="absentees" className="mt-4">
+                  {summary.events.length === 0 ? (
+                    <EmptyState message="لا يوجد غياب في هذا التاريخ" />
+                  ) : (
+                    <div className="flex flex-col gap-4">
+                      {summary.events.map((event) => (
+                        <AbsenteesPanel
+                          key={event.event_id}
+                          event={event}
+                          data={absentees.get(event.event_id)}
+                          loading={absenteesLoading.has(event.event_id)}
+                          onLoad={() => fetchAbsentees(event.event_id)}
+                          classId={classId}
+                          date={selectedDate}
+                          userRole={role}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
 
                 {/* ---- Chronic Absentees Tab ---- */}
-                {isLeaderOrManager && (
-                  <TabsContent value="ranged" className="mt-4">
+                <TabsContent value="ranged" className="mt-4">
                     <div className="flex items-center gap-2 mb-4" dir="rtl">
                       <span className="text-sm text-muted-foreground whitespace-nowrap">
                         من
@@ -565,9 +574,9 @@ export default function ReportsClass({ loaderData }: Route.ComponentProps) {
                       data={rangedAbsentees}
                       loading={rangedLoading}
                       classId={classId}
+                      userRole={role}
                     />
                   </TabsContent>
-                )}
               </Tabs>
             </>
           )}
@@ -750,6 +759,7 @@ function AbsenteesPanel({
   onLoad,
   classId,
   date,
+  userRole,
 }: {
   event: EventSummary;
   data?: AbsenteesData;
@@ -757,9 +767,12 @@ function AbsenteesPanel({
   onLoad: () => void;
   classId: string;
   date: string;
+  userRole?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [activeAbsenceTab, setActiveAbsenceTab] = useState<"student" | "teacher">("teacher");
+  const [activeAbsenceTab, setActiveAbsenceTab] = useState<"student" | "teacher">(
+    userRole === "teacher" ? "student" : "teacher"
+  );
   const [eventCopied, setEventCopied] = useState(false);
 
   function handleToggle() {
@@ -862,7 +875,7 @@ function AbsenteesPanel({
             </div>
           ) : data ? (
             <div className="flex flex-col gap-4">
-              {hasAbsentStudents && hasAbsentTeachers && (
+              {hasAbsentStudents && hasAbsentTeachers && userRole !== "teacher" && (
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -919,7 +932,7 @@ function AbsenteesPanel({
                 />
               )}
 
-              {activeAbsenceTab === "teacher" && hasAbsentTeachers && (
+              {activeAbsenceTab === "teacher" && hasAbsentTeachers && userRole !== "teacher" && (
                 <AbsenteeTable
                   persons={data.teachers}
                   type="teacher"
@@ -992,12 +1005,16 @@ function RangedAbsenteesPanel({
   data,
   loading,
   classId,
+  userRole,
 }: {
   data: { students: ChronicAbsentee[]; teachers: ChronicAbsentee[] } | null;
   loading: boolean;
   classId: string;
+  userRole?: string;
 }) {
-  const [activeTab, setActiveTab] = useState<"student" | "teacher">("teacher");
+  const [activeTab, setActiveTab] = useState<"student" | "teacher">(
+    userRole === "teacher" ? "student" : "teacher"
+  );
 
   useEffect(() => {
     if (!data) return;
@@ -1033,7 +1050,7 @@ function RangedAbsenteesPanel({
     const label = activeTab === "student" ? "مخدومين" : "خدام";
     return (
       <div className="flex flex-col gap-3">
-        {hasStudents && hasTeachers && (
+        {hasStudents && hasTeachers && userRole !== "teacher" && (
           <div className="flex gap-2">
             <Button size="sm" variant={activeTab === "student" ? "default" : "outline"} onClick={() => setActiveTab("student")} className="grow">
               <GraduationCap className="size-4" />
@@ -1091,7 +1108,7 @@ function RangedAbsenteesPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      {hasStudents && hasTeachers && (
+      {hasStudents && hasTeachers && userRole !== "teacher" && (
         <div className="flex gap-2">
           <Button size="sm" variant={activeTab === "student" ? "default" : "outline"} onClick={() => setActiveTab("student")} className="grow">
             <GraduationCap className="size-4" />

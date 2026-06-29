@@ -87,6 +87,7 @@ interface CachedEventsData {
   studentEvents: Event[];
   teacherEvents: Event[];
   role: UserRole;
+  className: string;
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
@@ -101,11 +102,13 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
         success: boolean;
         data: EventsData;
         role: UserRole;
+        className: string;
       }>(`/events/classes/${classId}`);
       return {
         studentEvents: eventsRes.data.data.studentEvents,
         teacherEvents: eventsRes.data.data.teacherEvents,
         role: eventsRes.data.role,
+        className: eventsRes.data.className,
       };
     }
   );
@@ -188,7 +191,7 @@ export default function AttendanceEvent({
   const filterText = useSearchFilter();
   const isAdmin = role === "leader" || role === "manager" || role === "admin";
 
-  const defaultTab = hasStudents ? "student" : "teacher";
+  const defaultTab = role === "teacher" || hasStudents ? "student" : "teacher";
   const [activeTab, setActiveTab] = useState<"student" | "teacher">(defaultTab);
   const [deleting, setDeleting] = useState(false);
 
@@ -270,8 +273,8 @@ export default function AttendanceEvent({
         </p>
       ) : (
         <>
-          {/* Student / teacher tab toggle */}
-          {hasStudents && hasTeachers && (
+          {/* Student / teacher tab toggle — teachers never see the teacher tab */}
+          {hasStudents && hasTeachers && role !== "teacher" && (
             <div className="flex gap-2">
               <Button
                 size="sm"

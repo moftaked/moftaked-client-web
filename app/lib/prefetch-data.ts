@@ -59,6 +59,7 @@ interface CachedEventsData {
   studentEvents: EventInfo[];
   teacherEvents: EventInfo[];
   role: string;
+  className: string;
 }
 
 interface Occurrence {
@@ -169,11 +170,13 @@ async function _prefetchClassData(classId: number): Promise<void> {
         success: boolean;
         data: EventsData;
         role: string;
+        className: string;
       }>(`/events/classes/${classId}`);
       return {
         studentEvents: res.data.data.studentEvents,
         teacherEvents: res.data.data.teacherEvents,
         role: res.data.role,
+        className: res.data.className,
       };
     },
   );

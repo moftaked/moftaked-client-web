@@ -232,7 +232,7 @@ export default function ReportsPerson({ loaderData }: Route.ComponentProps) {
             <div className="flex flex-col gap-4">
               <h2 className="text-base font-semibold flex items-center gap-2">
                 <BookOpen className="size-4 text-muted-foreground" />
-                الحضور حسب الحدث
+                الحضور
               </h2>
               <EventHistoryCard event={selectedEvent} />
             </div>

@@ -44,53 +44,61 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes('/auth/login') &&
-      !originalRequest.url?.includes('/auth/refresh')
-    ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = token;
+    // All 401s → refresh or redirect, NEVER show error dialog
+    if (error.response?.status === 401) {
+      if (
+        !originalRequest._retry &&
+        !originalRequest.url?.includes('/auth/login') &&
+        !originalRequest.url?.includes('/auth/refresh')
+      ) {
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          }).then((token) => {
+            originalRequest.headers.Authorization = token;
+            return api(originalRequest);
+          });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          const response = await axios.post(
+            `${import.meta.env.VITE_API_URL}/auth/refresh`,
+            {},
+            { withCredentials: true }
+          );
+
+          const { access_token } = response.data.data;
+          localStorage.setItem('authToken', access_token);
+
+          processQueue(null, access_token);
+
+          originalRequest.headers.Authorization = access_token;
           return api(originalRequest);
-        });
+        } catch {
+          localStorage.removeItem('authToken');
+          window.location.href = '/login';
+          failedQueue = [];
+          return new Promise<never>(() => {});
+        } finally {
+          isRefreshing = false;
+        }
       }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-
-        const { access_token } = response.data.data;
-        localStorage.setItem('authToken', access_token);
-
-        processQueue(null, access_token);
-
-        originalRequest.headers.Authorization = access_token;
-        return api(originalRequest);
-      } catch {
-        processQueue(error, null);
-        localStorage.removeItem('authToken');
-        window.location.href = '/login';
-        return Promise.reject(error);
-      } finally {
-        isRefreshing = false;
-      }
+      // 401 on login/refresh or a retry that still got 401 → just redirect
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
+      return new Promise<never>(() => {});
     }
 
-    // Don't dispatch global error for network errors — they are expected when
-    // offline and the calling code already handles them gracefully.
+    // Don't dispatch global error for network or client errors — they are
+    // expected and the calling code already handles them gracefully.
     if (error.code !== 'ERR_NETWORK') {
       const err = error instanceof Error ? error : new Error(error.message ?? String(error));
       const status = error.response?.status;
+      if (status && status < 500) return Promise.reject(error);
       const data = error.response?.data;
       if (data?.message) err.message = data.message;
       if (status) err.message = `[${status}] ${err.message}`;

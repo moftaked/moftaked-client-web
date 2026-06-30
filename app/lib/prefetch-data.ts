@@ -489,6 +489,10 @@ async function _prefetchAttendanceForOccurrence(
 /**
  * Prefetch person profiles and photos for all students and teachers in a class.
  * Reads student/teacher data from IndexedDB cache (populated in discovery phase).
+ *
+ * Two sub-phases:
+ *   1. Profile data (tracked by the caller's fetchAndCache)
+ *   2. Photos (progressTotal is extended here, tracked with the semaphore)
  */
 async function _prefetchPersonDetails(classId: number): Promise<void> {
   const [studentsCached, teachersCached] = await Promise.all([
@@ -511,13 +515,40 @@ async function _prefetchPersonDetails(classId: number): Promise<void> {
 
   if (allPeople.length === 0) return;
 
-  // Prefetch profiles; kick off photo fetch inline
+  // Phase 1: Profile data (tracked by fetchAndCache)
   await Promise.allSettled(
-    allPeople.map(({ id, type }) => _prefetchSingleProfile(id, type)),
+    allPeople.map(({ id, type }) => _prefetchSingleProfileData(id, type)),
   );
+
+  // Phase 2: Photos — count how many profiles have a photo_link
+  let photoCount = 0;
+  for (const { id, type } of allPeople) {
+    const cached = await getCached<PersonProfile>(personProfileKey(id, type));
+    if (cached?.data?.photo_link) photoCount++;
+  }
+  if (photoCount === 0) return;
+
+  progressPhase = "جاري تحميل الصور الشخصية...";
+  progressTotal += photoCount;
+  progressCb?.({ loaded: progressLoaded, total: progressTotal, phase: progressPhase });
+
+  const photoPromises = allPeople.map(async ({ id, type }) => {
+    const cached = await getCached<PersonProfile>(personProfileKey(id, type));
+    if (!cached?.data?.photo_link) return;
+    await photoSem.acquire();
+    try {
+      await _prefetchPhoto(cached.data.photo_link);
+    } finally {
+      progressLoaded++;
+      progressCb?.({ loaded: progressLoaded, total: progressTotal, phase: progressPhase });
+      photoSem.release();
+    }
+  });
+
+  await Promise.allSettled(photoPromises);
 }
 
-async function _prefetchSingleProfile(
+async function _prefetchSingleProfileData(
   personId: number,
   type: "student" | "teacher",
 ): Promise<void> {
@@ -531,35 +562,29 @@ async function _prefetchSingleProfile(
       return res.data.data;
     },
   );
-
-  // Always warm the photo cache, even if the profile was already cached
-  // from a previous prefetch run (the fetcher above would not have run).
-  const cachedProfile = await getCached<PersonProfile>(personProfileKey(personId, type));
-  const photoLink = cachedProfile?.data?.photo_link;
-  if (photoLink) {
-    // Fire and forget through the semaphore — never blocks profile completion.
-    photoSem.acquire().then(() => {
-      _prefetchPhoto(photoLink).finally(() => photoSem.release());
-    });
-  }
 }
 
 /**
- * Fetch a person's photo and store it in Cache Storage so it's available
- * offline. Only fetches the "md" size (most commonly used by avatars);
- * other sizes fall back to a network fetch when viewed.
+ * Fetch a person's photo sizes and store them in Cache Storage so they're
+ * available offline. Sizes are fetched sequentially within a single semaphore
+ * slot to avoid connection-pool pressure.
  */
 async function _prefetchPhoto(photoLink: string): Promise<void> {
-  const url = getPhotoUrl(photoLink, "md");
-  if (!url) return;
   const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
   if (!token) return;
-  try {
-    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (!response.ok) return;
-    const cache = await caches.open("photo-cache");
-    await cache.put(url, response);
-  } catch {
-    // Best-effort
+  const sizes: ("sm" | "md")[] = ["sm", "md"];
+  const cache = await caches.open("photo-cache");
+  for (const size of sizes) {
+    const url = getPhotoUrl(photoLink, size);
+    if (!url) continue;
+    try {
+      const cached = await cache.match(url);
+      if (cached) continue;
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) continue;
+      await cache.put(url, response);
+    } catch {
+      // Best-effort per size
+    }
   }
 }

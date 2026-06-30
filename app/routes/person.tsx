@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import api from "~/lib/api";
 import type { Route } from "./+types/person";
@@ -50,7 +50,12 @@ import { ImageCropper } from "~/components/image-cropper";
 import { PhotoViewer } from "~/components/photo-viewer";
 import { AssignPersonSheet } from "~/components/assign-person-sheet";
 import { isAdmin } from "~/lib/utils";
-import { resetTimestampCache, fetchAndCache } from "~/lib/sync-manager";
+import {
+  resetTimestampCache,
+  fetchAndCache,
+  registerFetcher,
+  unregisterFetcher,
+} from "~/lib/sync-manager";
 import {
   classStudentsKey,
   classTeachersKey,
@@ -135,6 +140,20 @@ export function HydrateFallback() {
 export default function PersonPage({ loaderData }: Route.ComponentProps) {
   const { person, type, personId } = loaderData;
   const navigate = useNavigate();
+
+  // Register fetcher so backgroundSync can re-fetch when data changes
+  useEffect(() => {
+    const key = personProfileKey(personId, type);
+    registerFetcher(key, async () => {
+      const paramKey = type === "student" ? "students" : "teachers";
+      const res = await api.get<{ success: boolean; data: PersonData }>(
+        `/persons/${paramKey}/${personId}`
+      );
+      return res.data.data;
+    });
+    return () => unregisterFetcher(key);
+  }, [personId, type]);
+
   const [classChecking, setClassChecking] = useState<number | null>(null);
   const [photoLink, setPhotoLink] = useState(person.photo_link);
 

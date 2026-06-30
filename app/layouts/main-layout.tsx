@@ -26,7 +26,7 @@ import { SlidingContainer } from "~/components/sliding-container";
 import { useNavigation } from "~/contexts/navigation-context";
 import { AttendanceSyncProvider } from "~/components/attendance-sync-provider";
 import { prefetchAllData, type PrefetchProgress } from "~/lib/prefetch-data";
-import { resetTimestampCache } from "~/lib/sync-manager";
+import { resetTimestampCache, backgroundSync } from "~/lib/sync-manager";
 import { toast } from "sonner";
 import { WifiOff, Wifi, CheckCircle2 } from "lucide-react";
 import { Progress } from "~/components/ui/progress";
@@ -38,9 +38,11 @@ export default function MainLayout() {
   const location = useLocation();
 
   // Reset the in-memory timestamp cache on every route change so the next
-  // data fetch always checks the server for freshness.
+  // data fetch always checks the server for freshness. Also trigger a
+  // background sync to refetch any stale data that has registered fetchers.
   useEffect(() => {
     resetTimestampCache();
+    backgroundSync();
   }, [location.pathname]);
   useEffect(() => {
     if (!isAuthenticated()) {

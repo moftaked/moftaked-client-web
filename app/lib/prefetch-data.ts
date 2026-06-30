@@ -490,28 +490,39 @@ async function _prefetchSingleProfile(
       const res = await prefetchApi.get<{ success: boolean; data: PersonProfile }>(
         `/persons/${paramKey}/${personId}`,
       );
-      const profile = res.data.data;
-      if (profile.photo_link) {
-        _prefetchPhoto(profile.photo_link);
-      }
-      return profile;
+      return res.data.data;
     },
   );
+
+  // Always warm the photo cache, even if the profile was already cached
+  // from a previous prefetch run (the fetcher above would not have run).
+  const cachedProfile = await getCached<PersonProfile>(personProfileKey(personId, type));
+  if (cachedProfile?.data?.photo_link) {
+    await _prefetchPhoto(cachedProfile.data.photo_link);
+  }
 }
 
 /**
- * Warm the Service Worker cache for a person's photo by doing an
- * authenticated fetch. The SW cache-first strategy means this photo
- * will be served from cache on subsequent requests.
+ * Fetch a person's photo and store it in Cache Storage so it's available
+ * offline. Caches all three sizes so usePhotoBlobUrl can find the matching
+ * size regardless of which one the component requests.
  */
 async function _prefetchPhoto(photoLink: string): Promise<void> {
-  const url = getPhotoUrl(photoLink, "sm");
-  if (!url) return;
   const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
   if (!token) return;
-  try {
-    await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  } catch {
-    // Best-effort
-  }
+  const sizes: ("sm" | "md" | "lg")[] = ["sm", "md", "lg"];
+  await Promise.allSettled(
+    sizes.map(async (size) => {
+      const url = getPhotoUrl(photoLink, size);
+      if (!url) return;
+      try {
+        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!response.ok) return;
+        const cache = await caches.open("photo-cache");
+        await cache.put(url, response);
+      } catch {
+        // Best-effort
+      }
+    }),
+  );
 }

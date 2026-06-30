@@ -71,6 +71,37 @@ export interface PrefetchProgress {
 }
 
 // ---------------------------------------------------------------------------
+// Concurrency limiter
+// ---------------------------------------------------------------------------
+
+/**
+ * Simple async semaphore that limits how many concurrent operations run.
+ * Call `acquire()` before starting an op and `release()` when done.
+ */
+function createSemaphore(maxConcurrent: number) {
+  let running = 0;
+  const queue: (() => void)[] = [];
+
+  return {
+    acquire(): Promise<void> {
+      if (running < maxConcurrent) {
+        running++;
+        return Promise.resolve();
+      }
+      return new Promise((resolve) => queue.push(resolve));
+    },
+    release(): void {
+      const next = queue.shift();
+      if (next) {
+        next();
+      } else {
+        running--;
+      }
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Types (mirrored from route files — keep lightweight)
 // ---------------------------------------------------------------------------
 
@@ -153,6 +184,13 @@ const MIN_PREFETCH_INTERVAL_MS = 5 * 60 * 1000;
 
 let lastPrefetchAt = 0;
 let running: Promise<void> | null = null;
+
+// ---------------------------------------------------------------------------
+// Module-level state
+// ---------------------------------------------------------------------------
+
+/** Limit photo fetches to 4 concurrent to avoid ERR_INSUFFICIENT_RESOURCES. */
+const photoSem = createSemaphore(4);
 
 // ---------------------------------------------------------------------------
 // Module-level progress state
@@ -497,32 +535,31 @@ async function _prefetchSingleProfile(
   // Always warm the photo cache, even if the profile was already cached
   // from a previous prefetch run (the fetcher above would not have run).
   const cachedProfile = await getCached<PersonProfile>(personProfileKey(personId, type));
-  if (cachedProfile?.data?.photo_link) {
-    await _prefetchPhoto(cachedProfile.data.photo_link);
+  const photoLink = cachedProfile?.data?.photo_link;
+  if (photoLink) {
+    // Fire and forget through the semaphore — never blocks profile completion.
+    photoSem.acquire().then(() => {
+      _prefetchPhoto(photoLink).finally(() => photoSem.release());
+    });
   }
 }
 
 /**
  * Fetch a person's photo and store it in Cache Storage so it's available
- * offline. Caches all three sizes so usePhotoBlobUrl can find the matching
- * size regardless of which one the component requests.
+ * offline. Only fetches the "md" size (most commonly used by avatars);
+ * other sizes fall back to a network fetch when viewed.
  */
 async function _prefetchPhoto(photoLink: string): Promise<void> {
+  const url = getPhotoUrl(photoLink, "md");
+  if (!url) return;
   const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
   if (!token) return;
-  const sizes: ("sm" | "md" | "lg")[] = ["sm", "md", "lg"];
-  await Promise.allSettled(
-    sizes.map(async (size) => {
-      const url = getPhotoUrl(photoLink, size);
-      if (!url) return;
-      try {
-        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!response.ok) return;
-        const cache = await caches.open("photo-cache");
-        await cache.put(url, response);
-      } catch {
-        // Best-effort
-      }
-    }),
-  );
+  try {
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) return;
+    const cache = await caches.open("photo-cache");
+    await cache.put(url, response);
+  } catch {
+    // Best-effort
+  }
 }

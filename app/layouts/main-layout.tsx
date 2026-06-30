@@ -25,9 +25,10 @@ import { Logout } from "~/components/logout";
 import { SlidingContainer } from "~/components/sliding-container";
 import { useNavigation } from "~/contexts/navigation-context";
 import { AttendanceSyncProvider } from "~/components/attendance-sync-provider";
-import { prefetchAllData } from "~/lib/prefetch-data";
+import { prefetchAllData, type PrefetchProgress } from "~/lib/prefetch-data";
 import { toast } from "sonner";
-import { WifiOff, Wifi } from "lucide-react";
+import { WifiOff, Wifi, CheckCircle2 } from "lucide-react";
+import { Progress } from "~/components/ui/progress";
 import { GlobalSearchBar } from "~/components/global-search-bar";
 
 export default function MainLayout() {
@@ -45,7 +46,7 @@ export default function MainLayout() {
   // /sync/timestamps before the login redirect completes.
   useEffect(() => {
     if (isAuthenticated()) {
-      prefetchAllData();
+      runPrefetchWithToast(false);
     }
   }, []);
 
@@ -68,7 +69,7 @@ export default function MainLayout() {
         icon: <Wifi className="size-5" />,
       });
       // Re-prefetch fresh data now that we're back online
-      prefetchAllData(true);
+      runPrefetchWithToast(true);
     }
 
     // Check current state on mount
@@ -95,6 +96,64 @@ export default function MainLayout() {
       </SearchProvider>
     </AttendanceSyncProvider>
   );
+}
+
+/**
+ * Run prefetchAllData with an attached sonner toast showing progress.
+ */
+function runPrefetchWithToast(force: boolean) {
+  let toastId: string | number | null = null;
+  const startTime = Date.now();
+
+  prefetchAllData(force, (progress: PrefetchProgress) => {
+    // total ≤ 1 means no extended work or a status-only update
+    if (progress.total <= 1) {
+      if (toastId) {
+        toast.dismiss(toastId);
+        toastId = null;
+      }
+      return;
+    }
+
+    const pct = Math.round((progress.loaded / progress.total) * 100);
+    const done = progress.loaded >= progress.total;
+
+    if (done) {
+      if (toastId) {
+        toast.dismiss(toastId);
+        toastId = null;
+      }
+      const elapsed = Date.now() - startTime;
+      if (elapsed > 1000) {
+        toast.success("جميع البيانات جاهزة للاستخدام دون اتصال", {
+          duration: 4000,
+          icon: <CheckCircle2 className="size-5" />,
+        });
+      }
+    } else if (!toastId) {
+      toastId = toast(
+        <div dir="rtl" className="w-full">
+          <p className="text-sm font-medium mb-2">{progress.phase}</p>
+          <Progress value={pct} className="w-full" />
+          <p className="text-xs text-muted-foreground mt-1">
+            {progress.loaded}/{progress.total} — {pct}%
+          </p>
+        </div>,
+        { duration: Infinity },
+      );
+    } else {
+      toast(
+        <div dir="rtl" className="w-full">
+          <p className="text-sm font-medium mb-2">{progress.phase}</p>
+          <Progress value={pct} className="w-full" />
+          <p className="text-xs text-muted-foreground mt-1">
+            {progress.loaded}/{progress.total} — {pct}%
+          </p>
+        </div>,
+        { id: toastId },
+      );
+    }
+  });
 }
 
 function SidebarLayout() {

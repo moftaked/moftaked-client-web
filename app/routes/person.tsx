@@ -50,10 +50,11 @@ import { ImageCropper } from "~/components/image-cropper";
 import { PhotoViewer } from "~/components/photo-viewer";
 import { AssignPersonSheet } from "~/components/assign-person-sheet";
 import { isAdmin } from "~/lib/utils";
-import { resetTimestampCache } from "~/lib/sync-manager";
+import { resetTimestampCache, fetchAndCache } from "~/lib/sync-manager";
 import {
   classStudentsKey,
   classTeachersKey,
+  personProfileKey,
   removeCached,
 } from "~/lib/offline-db";
 
@@ -86,15 +87,22 @@ interface PersonData {
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const { type, personId } = params;
+  const personType = type as "student" | "teacher";
 
-  const paramKey = type === "student" ? "students" : "teachers";
-  const res = await api.get<{ success: boolean; data: PersonData }>(
-    `/persons/${paramKey}/${personId}`
+  const person = await fetchAndCache<PersonData>(
+    personProfileKey(personId!, personType),
+    async () => {
+      const paramKey = personType === "student" ? "students" : "teachers";
+      const res = await api.get<{ success: boolean; data: PersonData }>(
+        `/persons/${paramKey}/${personId}`
+      );
+      return res.data.data;
+    },
   );
 
   return {
-    person: res.data.data,
-    type: type as "student" | "teacher",
+    person,
+    type: personType,
     personId: personId!,
   };
 }

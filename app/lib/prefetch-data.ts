@@ -146,11 +146,13 @@ interface District {
 interface Student {
   student_id: number;
   student_name: string;
+  photo_link?: string | null;
 }
 
 interface Teacher {
   teacher_id: number;
   teacher_name: string;
+  photo_link?: string | null;
 }
 
 interface AttendancePerson {
@@ -523,9 +525,27 @@ async function _prefetchPersonDetails(classId: number): Promise<void> {
     allPeople.map(({ id, type }) => _prefetchSingleProfileData(id, type)),
   );
 
-  // Phase 2: Photos — count how many profiles have a photo_link
+  // Phase 2: Photos
+  // Build a map of person_id → photo_link from the class list cache.
+  // This is more reliable than the person profile cache because the class
+  // list is always fetched during discovery (students & teachers endpoints
+  // return photo_link in the response).
+  const photoFromClassList = new Map<number, string>();
+  if (studentsCached?.data) {
+    for (const s of studentsCached.data) {
+      if (s.photo_link) photoFromClassList.set(s.student_id, s.photo_link);
+    }
+  }
+  if (teachersCached?.data) {
+    for (const t of teachersCached.data) {
+      if (t?.photo_link) photoFromClassList.set(t.teacher_id, t.photo_link);
+    }
+  }
+
+  // Count photos from either source
   let photoCount = 0;
   for (const { id, type } of allPeople) {
+    if (photoFromClassList.has(id)) { photoCount++; continue; }
     const cached = await getCached<PersonProfile>(personProfileKey(id, type));
     if (cached?.data?.photo_link) photoCount++;
   }
@@ -536,11 +556,12 @@ async function _prefetchPersonDetails(classId: number): Promise<void> {
   progressCb?.({ loaded: progressLoaded, total: progressTotal, phase: progressPhase });
 
   const photoPromises = allPeople.map(async ({ id, type }) => {
-    const cached = await getCached<PersonProfile>(personProfileKey(id, type));
-    if (!cached?.data?.photo_link) return;
+    const photoLink = photoFromClassList.get(id)
+      ?? (await getCached<PersonProfile>(personProfileKey(id, type)))?.data?.photo_link;
+    if (!photoLink) return;
     await photoSem.acquire();
     try {
-      await _prefetchPhoto(cached.data.photo_link);
+      await _prefetchPhoto(photoLink);
     } finally {
       progressLoaded++;
       progressCb?.({ loaded: progressLoaded, total: progressTotal, phase: progressPhase });

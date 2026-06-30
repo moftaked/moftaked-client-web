@@ -113,7 +113,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
     }
   );
 
-  const { studentEvents, teacherEvents, role } = cachedEvents;
+  const { studentEvents, teacherEvents, role, className } = cachedEvents;
 
   const hasStudents = studentEvents.some((e) => e.event_id === eventId);
   const hasTeachers = teacherEvents.some((e) => e.event_id === eventId);
@@ -140,6 +140,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
     classId,
     eventId,
     eventName: event?.event_name ?? "",
+    className,
     hasStudents,
     hasTeachers,
     role,
@@ -181,6 +182,7 @@ export default function AttendanceEvent({
     classId,
     eventId,
     eventName,
+    className,
     hasStudents,
     hasTeachers,
     role,
@@ -224,11 +226,10 @@ export default function AttendanceEvent({
       <div className="flex items-center gap-3">
         <div className="flex flex-col grow">
           <h1 className="text-xl font-bold">{eventName}</h1>
-          {latestOccurrence && (
-            <span className="text-sm text-muted-foreground">
-              {formatDate(latestOccurrence.occurence_date)}
-            </span>
-          )}
+          <span className="text-sm text-muted-foreground">
+            {className}
+            {latestOccurrence && ` — ${formatDate(latestOccurrence.occurence_date)}`}
+          </span>
         </div>
 
         {/* Delete last occurrence — admin only */}

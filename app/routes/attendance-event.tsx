@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useNavigate, useBlocker } from "react-router";
+import { useNavigate } from "react-router";
 import { useSearchFilter } from "~/contexts/search-context";
 import api from "~/lib/api";
 import type { Route } from "./+types/attendance-event";
@@ -409,26 +409,6 @@ function AttendanceList({
 
   const endpoint = getEndpoint(eventOccurrenceId, type);
 
-  // ------- navigation guard -------
-
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      currentLocation.pathname !== nextLocation.pathname && unsavedRef.current
-  );
-
-  useEffect(() => {
-    if (blocker.state === "blocked") {
-      const leave = window.confirm(
-        "لديك تغييرات غير محفوظة في سبب الغياب. هل تريد المغادرة؟"
-      );
-      if (leave) {
-        blocker.proceed();
-      } else {
-        blocker.reset();
-      }
-    }
-  }, [blocker]);
-
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
       if (unsavedRef.current) {
@@ -604,7 +584,7 @@ function AttendanceList({
           if (stored.changes[p.person_id] !== undefined) {
             updated.attended = stored.changes[p.person_id];
           }
-          if (!updated.attended && stored.reasons[p.person_id]) {
+          if (!updated.attended && stored.reasons[p.person_id] !== undefined) {
             updated.absence_reason = stored.reasons[p.person_id];
           }
           return updated;
@@ -669,14 +649,7 @@ function AttendanceList({
   function handleReasonBlur(personId: number, reason: string) {
     reasonsRef.current[personId] = reason;
     persistToStorage();
-
-    if (reason) {
-      markDirty();
-    } else {
-      delete reasonsRef.current[personId];
-      persistToStorage();
-    }
-
+    markDirty();
     unsavedRef.current = false;
   }
 
@@ -812,7 +785,10 @@ function AttendanceList({
                   size="sm"
                   variant="outline"
                   className="text-xs self-start"
-                  onClick={() => setReasonExpanded((prev) => ({ ...prev, [person.person_id]: false }))}
+                  onClick={() => {
+                    (document.activeElement as HTMLElement | null)?.blur();
+                    setReasonExpanded((prev) => ({ ...prev, [person.person_id]: false }));
+                  }}
                 >
                   تم
                 </Button>

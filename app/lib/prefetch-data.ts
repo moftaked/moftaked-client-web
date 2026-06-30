@@ -113,14 +113,13 @@ interface District {
 }
 
 interface Student {
-  person_id: number;
-  person_name: string;
-  district_id: number | null;
+  student_id: number;
+  student_name: string;
 }
 
 interface Teacher {
-  person_id: number;
-  person_name: string;
+  teacher_id: number;
+  teacher_name: string;
 }
 
 interface AttendancePerson {
@@ -463,12 +462,12 @@ async function _prefetchPersonDetails(classId: number): Promise<void> {
 
   if (studentsCached?.data) {
     for (const s of studentsCached.data) {
-      allPeople.push({ id: s.person_id, type: "student" });
+      allPeople.push({ id: s.student_id, type: "student" });
     }
   }
   if (teachersCached?.data) {
     for (const t of teachersCached.data) {
-      if (t) allPeople.push({ id: t.person_id, type: "teacher" });
+      if (t) allPeople.push({ id: t.teacher_id, type: "teacher" });
     }
   }
 

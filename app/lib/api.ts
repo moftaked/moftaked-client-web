@@ -1,5 +1,11 @@
 import axios from 'axios';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    __suppressGlobalError?: boolean;
+  }
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   timeout: 20000,
@@ -102,6 +108,10 @@ api.interceptors.response.use(
       const data = error.response?.data;
       if (data?.message) err.message = data.message;
       if (status) err.message = `[${status}] ${err.message}`;
+
+      // Prefetch requests set this flag to avoid showing the error dialog
+      // for transient 5xx errors that are handled silently by the prefetch code.
+      if ((error.config as any)?.__suppressGlobalError) return Promise.reject(error);
 
       window.dispatchEvent(new CustomEvent("app-error", { detail: err }));
     }

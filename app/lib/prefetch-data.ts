@@ -24,6 +24,29 @@
 
 import api from "~/lib/api";
 import { fetchAndCache as uncachedFetchAndCache } from "~/lib/sync-manager";
+
+// Suppress the global error dialog for prefetch requests — 5xx errors from
+// background prefetches are expected and already handled silently by the
+// prefetch code (try/catch + Promise.allSettled).
+const prefetchApi = new Proxy(api, {
+  get(target, prop: string | symbol) {
+    const orig = (target as any)[prop];
+    if (typeof orig === "function") {
+      return (...args: any[]) => {
+        if (args.length > 0 && typeof args[args.length - 1] === "object") {
+          args[args.length - 1] = {
+            ...args[args.length - 1],
+            __suppressGlobalError: true,
+          };
+        } else if (args.length > 0) {
+          args.push({ __suppressGlobalError: true } as any);
+        }
+        return orig.apply(target, args);
+      };
+    }
+    return orig;
+  },
+}) as typeof api;
 import {
   CLASSES_KEY,
   DISTRICTS_KEY,
@@ -212,7 +235,7 @@ async function _doPrefetch(): Promise<void> {
   const schools = await uncachedFetchAndCache<SchoolWithClasses[]>(
     CLASSES_KEY,
     async () => {
-      const res = await api.get<SchoolWithClasses[]>("/classes");
+      const res = await prefetchApi.get<SchoolWithClasses[]>("/classes");
       return res.data;
     },
   );
@@ -221,7 +244,7 @@ async function _doPrefetch(): Promise<void> {
 
   // Districts (fast, runs in parallel with base data below)
   const districtsPromise = uncachedFetchAndCache<District[]>(DISTRICTS_KEY, async () => {
-    const res = await api.get<{ success: boolean; data: District[] }>("/districts");
+    const res = await prefetchApi.get<{ success: boolean; data: District[] }>("/districts");
     return res.data.data;
   });
 
@@ -307,7 +330,7 @@ async function _prefetchClassBaseData(classId: number): Promise<ClassScope | nul
     const eventsData = await uncachedFetchAndCache<CachedEventsData>(
       classEventsKey(classId),
       async () => {
-        const res = await api.get<{
+        const res = await prefetchApi.get<{
           success: boolean;
           data: EventsData;
           role: string;
@@ -335,7 +358,7 @@ async function _prefetchClassBaseData(classId: number): Promise<ClassScope | nul
       _prefetchTeachers(classId),
       ...Array.from(eventMap.keys()).map((eventId) =>
         uncachedFetchAndCache<Occurrence[]>(eventOccurrencesKey(eventId), async () => {
-          const res = await api.get<{ success: boolean; data: Occurrence[] }>(
+          const res = await prefetchApi.get<{ success: boolean; data: Occurrence[] }>(
             `/events/${eventId}/occurrences`,
           );
           return res.data.data;
@@ -364,7 +387,7 @@ async function _prefetchClassBaseData(classId: number): Promise<ClassScope | nul
 
 async function _prefetchStudents(classId: number): Promise<void> {
   await uncachedFetchAndCache<Student[]>(classStudentsKey(classId), async () => {
-    const res = await api.get<{ success: boolean; data: Student[] }>(
+    const res = await prefetchApi.get<{ success: boolean; data: Student[] }>(
       `/classes/${classId}/students`,
     );
     return res.data.data;
@@ -374,7 +397,7 @@ async function _prefetchStudents(classId: number): Promise<void> {
 async function _prefetchTeachers(classId: number): Promise<void> {
   await uncachedFetchAndCache<Teacher[] | null>(classTeachersKey(classId), async () => {
     try {
-      const res = await api.get<{ success: boolean; data: Teacher[] }>(
+      const res = await prefetchApi.get<{ success: boolean; data: Teacher[] }>(
         `/classes/${classId}/teachers`,
       );
       return res.data.data;
@@ -417,7 +440,7 @@ async function _prefetchAttendanceForOccurrence(
   await fetchAndCache<AttendancePerson[]>(
     occurrenceAttendanceKey(occurrenceId, type),
     async () => {
-      const res = await api.get<{
+      const res = await prefetchApi.get<{
         success: boolean;
         data: { attendance: AttendancePerson[] };
       }>(`/attendance/${occurrenceId}/${type}`);
@@ -465,7 +488,7 @@ async function _prefetchSingleProfile(
     personProfileKey(personId, type),
     async () => {
       const paramKey = type === "student" ? "students" : "teachers";
-      const res = await api.get<{ success: boolean; data: PersonProfile }>(
+      const res = await prefetchApi.get<{ success: boolean; data: PersonProfile }>(
         `/persons/${paramKey}/${personId}`,
       );
       const profile = res.data.data;

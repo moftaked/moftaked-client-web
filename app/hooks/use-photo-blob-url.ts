@@ -43,7 +43,9 @@ export function usePhotoBlobUrl(
     const photoUrl: string = url;
 
     async function load() {
-      // 1. Try Cache Storage first (populated by prefetch-data.ts)
+      let foundInCache = false;
+
+      // 1. Serve from cache immediately if available
       try {
         const cache = await caches.open("photo-cache");
         const cached = await cache.match(photoUrl);
@@ -54,28 +56,34 @@ export function usePhotoBlobUrl(
             objectUrlRef.current = blobUrl;
             setBlobUrl(blobUrl);
             setLoading(false);
+            foundInCache = true;
           }
-          return;
         }
       } catch {
-        // Cache lookup failed — fall through to network
+        // Cache lookup failed — ignore
       }
 
-      // 2. Fall back to fetching from the network
+      // 2. Always background-revalidate from network (stale-while-revalidate)
+      //    This ensures updated photos are picked up even when the URL hasn't
+      //    changed, without blocking the initial render.
       try {
         const token = localStorage.getItem("authToken");
         if (!token) throw new Error();
         const res = await fetch(photoUrl, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) throw new Error();
+        // Update the cache with the fresh response
+        const cache = await caches.open("photo-cache");
+        await cache.put(photoUrl, res.clone());
         const blob = await res.blob();
         if (!cancelledRef.current) {
-          const blobUrl = URL.createObjectURL(blob);
-          objectUrlRef.current = blobUrl;
-          setBlobUrl(blobUrl);
+          revoke();
+          const newBlobUrl = URL.createObjectURL(blob);
+          objectUrlRef.current = newBlobUrl;
+          setBlobUrl(newBlobUrl);
           setLoading(false);
         }
       } catch {
-        if (!cancelledRef.current) {
+        if (!foundInCache && !cancelledRef.current) {
           setError(true);
           setLoading(false);
         }

@@ -26,6 +26,7 @@ import { SlidingContainer } from "~/components/sliding-container";
 import { useNavigation } from "~/contexts/navigation-context";
 import { AttendanceSyncProvider } from "~/components/attendance-sync-provider";
 import { prefetchAllData, type PrefetchProgress } from "~/lib/prefetch-data";
+import { resetTimestampCache } from "~/lib/sync-manager";
 import { toast } from "sonner";
 import { WifiOff, Wifi, CheckCircle2 } from "lucide-react";
 import { Progress } from "~/components/ui/progress";
@@ -34,6 +35,13 @@ import { GlobalSearchBar } from "~/components/global-search-bar";
 export default function MainLayout() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Reset the in-memory timestamp cache on every route change so the next
+  // data fetch always checks the server for freshness.
+  useEffect(() => {
+    resetTimestampCache();
+  }, [location.pathname]);
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate('/login');

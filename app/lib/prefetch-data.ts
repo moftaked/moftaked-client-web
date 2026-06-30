@@ -602,8 +602,6 @@ async function _prefetchPhoto(photoLink: string): Promise<void> {
     const url = getPhotoUrl(photoLink, size);
     if (!url) continue;
     try {
-      const cached = await cache.match(url);
-      if (cached) continue;
       const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) continue;
       await cache.put(url, response);

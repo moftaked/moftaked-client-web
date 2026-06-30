@@ -601,6 +601,10 @@ async function _prefetchPhoto(photoLink: string): Promise<void> {
   for (const size of sizes) {
     const url = getPhotoUrl(photoLink, size);
     if (!url) continue;
+    // Skip if already cached — prevents re-downloading all photos on every app refresh.
+    // Updated photos are picked up by usePhotoBlobUrl's stale-while-revalidate when viewed.
+    const existing = await cache.match(url);
+    if (existing) continue;
     try {
       const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) continue;

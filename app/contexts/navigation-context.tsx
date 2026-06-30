@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, ArrowLeftRight, School, CalendarDays, Map, Settings, type LucideProps } from "lucide-react";
+import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, School, CalendarDays, Map, Settings, type LucideProps } from "lucide-react";
 import { isAdmin, isManager } from "~/lib/utils";
 
 export interface NavigationItem {
@@ -47,14 +47,6 @@ const navigationItems: NavigationItem[] = [
     title: "الحسابات", 
     url: "/admin/accounts", 
     icon: ShieldCheck,
-    showInSidebar: true,
-    showInBottomNav: false,
-    adminOnly: true,
-  },
-  { 
-    title: "نقل أشخاص", 
-    url: "/admin/persons", 
-    icon: ArrowLeftRight,
     showInSidebar: true,
     showInBottomNav: false,
     adminOnly: true,

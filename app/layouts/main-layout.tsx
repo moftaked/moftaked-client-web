@@ -10,6 +10,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
@@ -213,7 +214,7 @@ function SidebarLayout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {items.map((item) => (
+                {items.filter(i => !i.adminOnly && !i.managerOnly).map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <NavLink to={item.url} end>
@@ -226,6 +227,25 @@ function SidebarLayout() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+          {items.some(i => i.adminOnly || i.managerOnly) && (
+            <SidebarGroup>
+              <SidebarGroupLabel>الإدارة</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.filter(i => i.adminOnly || i.managerOnly).map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink to={item.url} end>
+                          <item.icon />
+                          <span className="text-base">{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </SidebarContent>
         <SidebarFooter>
           {open ? (

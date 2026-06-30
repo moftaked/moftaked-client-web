@@ -23,6 +23,7 @@ function Toaster({ ...props }: ToasterProps) {
       }
       dir="rtl"
       position="top-center"
+      closeButton
       {...props}
     />
   )

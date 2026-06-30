@@ -126,6 +126,7 @@ function runPrefetchWithToast(force: boolean) {
       const elapsed = Date.now() - startTime;
       if (elapsed > 1000) {
         toast.success("جميع البيانات جاهزة للاستخدام دون اتصال", {
+          id: "prefetch-done-toast",
           duration: 4000,
           icon: <CheckCircle2 className="size-5" />,
         });

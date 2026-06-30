@@ -477,10 +477,13 @@ async function _prefetchAttendanceForOccurrence(
   await fetchAndCache<AttendancePerson[]>(
     occurrenceAttendanceKey(occurrenceId, type),
     async () => {
+      const endpoint = type === "student"
+        ? `/attendance/${occurrenceId}/students`
+        : `/attendance/${occurrenceId}/teachers`;
       const res = await prefetchApi.get<{
         success: boolean;
         data: { attendance: AttendancePerson[] };
-      }>(`/attendance/${occurrenceId}/${type}`);
+      }>(endpoint);
       return res.data.data.attendance;
     },
   );

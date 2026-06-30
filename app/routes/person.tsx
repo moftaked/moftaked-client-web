@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import api from "~/lib/api";
 import type { Route } from "./+types/person";
@@ -50,10 +50,16 @@ import { ImageCropper } from "~/components/image-cropper";
 import { PhotoViewer } from "~/components/photo-viewer";
 import { AssignPersonSheet } from "~/components/assign-person-sheet";
 import { isAdmin } from "~/lib/utils";
-import { resetTimestampCache } from "~/lib/sync-manager";
+import {
+  resetTimestampCache,
+  fetchAndCache,
+  registerFetcher,
+  unregisterFetcher,
+} from "~/lib/sync-manager";
 import {
   classStudentsKey,
   classTeachersKey,
+  personProfileKey,
   removeCached,
 } from "~/lib/offline-db";
 
@@ -86,15 +92,22 @@ interface PersonData {
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const { type, personId } = params;
+  const personType = type as "student" | "teacher";
 
-  const paramKey = type === "student" ? "students" : "teachers";
-  const res = await api.get<{ success: boolean; data: PersonData }>(
-    `/persons/${paramKey}/${personId}`
+  const person = await fetchAndCache<PersonData>(
+    personProfileKey(personId!, personType),
+    async () => {
+      const paramKey = personType === "student" ? "students" : "teachers";
+      const res = await api.get<{ success: boolean; data: PersonData }>(
+        `/persons/${paramKey}/${personId}`
+      );
+      return res.data.data;
+    },
   );
 
   return {
-    person: res.data.data,
-    type: type as "student" | "teacher",
+    person,
+    type: personType,
     personId: personId!,
   };
 }
@@ -127,6 +140,21 @@ export function HydrateFallback() {
 export default function PersonPage({ loaderData }: Route.ComponentProps) {
   const { person, type, personId } = loaderData;
   const navigate = useNavigate();
+
+  // Register fetcher so backgroundSync can re-fetch when data changes
+  useEffect(() => {
+    const key = personProfileKey(personId, type);
+    registerFetcher(key, async () => {
+      const paramKey = type === "student" ? "students" : "teachers";
+      const res = await api.get<{ success: boolean; data: PersonData }>(
+        `/persons/${paramKey}/${personId}`
+      );
+      return res.data.data;
+    });
+    return () => unregisterFetcher(key);
+  }, [personId, type]);
+
+  const [classChecking, setClassChecking] = useState<number | null>(null);
   const [photoLink, setPhotoLink] = useState(person.photo_link);
 
   const [uploading, setUploading] = useState(false);
@@ -352,6 +380,23 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
     // When there IS a photo, the PopoverTrigger handles the click
   }
 
+  async function handleClassClick(classId: number) {
+    setClassChecking(classId);
+    try {
+      await api.head(`/classes/${classId}/students`);
+      navigate(`/class/${classId}`);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 403) {
+        toast.error("ليس لديك صلاحية الوصول لهذا الفصل");
+      } else {
+        navigate(`/class/${classId}`);
+      }
+    } finally {
+      setClassChecking(null);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6 max-w-lg mx-auto pb-8">
       {/* Photo + Name Section */}
@@ -542,10 +587,12 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
         <CardContent className="flex flex-col gap-2">
           {person.classes && person.classes.length > 0 ? (
             person.classes.map((cls: PersonClass) => (
-              <Link
+              <button
                 key={cls.class_id}
-                to={`/class/${cls.class_id}`}
-                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors"
+                type="button"
+                disabled={classChecking === cls.class_id}
+                onClick={() => handleClassClick(cls.class_id)}
+                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors w-full text-right disabled:opacity-50"
               >
                 <BookOpen className="size-4 text-muted-foreground shrink-0" />
                 <div className="flex flex-col min-w-0">
@@ -556,7 +603,7 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
                     {cls.school_name}
                   </span>
                 </div>
-              </Link>
+              </button>
             ))
           ) : (
             <p className="text-sm text-muted-foreground py-2 text-center">

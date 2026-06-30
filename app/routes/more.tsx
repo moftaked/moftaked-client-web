@@ -3,7 +3,7 @@ import { Logout } from "~/components/logout";
 import { ModeToggle } from "~/components/mode-toggle";
 import { isAdmin } from "~/lib/utils";
 import { Link } from "react-router";
-import { ShieldCheck, ArrowLeftRight, School, CalendarDays, MapPin, Trash2, Bug, Settings } from "lucide-react";
+import { ShieldCheck, School, CalendarDays, MapPin, Trash2, Bug, Settings } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -65,12 +65,6 @@ export default function More() {
             <Link to="/admin/accounts">
               <ShieldCheck className="size-4" />
               إدارة الحسابات
-            </Link>
-          </Button>
-          <Button variant="outline" className="justify-start" asChild>
-            <Link to="/admin/persons">
-              <ArrowLeftRight className="size-4" />
-              نقل و تعيين الأشخاص
             </Link>
           </Button>
           <Button variant="outline" className="justify-start" asChild>

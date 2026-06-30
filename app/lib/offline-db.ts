@@ -296,6 +296,10 @@ export function occurrenceAttendanceKey(
   return `occurrence_${occurrenceId}_attendance_${type}`;
 }
 
+export function personProfileKey(personId: number | string, type: "student" | "teacher"): string {
+  return `person_${type}_${personId}`;
+}
+
 export const CLASSES_KEY = "classes";
 export const DISTRICTS_KEY = "districts";
 

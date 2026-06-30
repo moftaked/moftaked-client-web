@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useNavigate, useBlocker } from "react-router";
+import { useNavigate } from "react-router";
 import { useSearchFilter } from "~/contexts/search-context";
 import api from "~/lib/api";
 import type { Route } from "./+types/attendance-event";
@@ -113,7 +113,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
     }
   );
 
-  const { studentEvents, teacherEvents, role } = cachedEvents;
+  const { studentEvents, teacherEvents, role, className } = cachedEvents;
 
   const hasStudents = studentEvents.some((e) => e.event_id === eventId);
   const hasTeachers = teacherEvents.some((e) => e.event_id === eventId);
@@ -140,6 +140,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
     classId,
     eventId,
     eventName: event?.event_name ?? "",
+    className,
     hasStudents,
     hasTeachers,
     role,
@@ -181,6 +182,7 @@ export default function AttendanceEvent({
     classId,
     eventId,
     eventName,
+    className,
     hasStudents,
     hasTeachers,
     role,
@@ -204,7 +206,7 @@ export default function AttendanceEvent({
       // Invalidate occurrence cache so fresh data is loaded on next visit
       resetTimestampCache();
       await removeCached(eventOccurrencesKey(eventId));
-      navigate(`/attendance/${classId}`);
+      navigate(`/attendance/${classId}`, { replace: true });
     } catch {
       setDeleting(false);
     }
@@ -224,11 +226,10 @@ export default function AttendanceEvent({
       <div className="flex items-center gap-3">
         <div className="flex flex-col grow">
           <h1 className="text-xl font-bold">{eventName}</h1>
-          {latestOccurrence && (
-            <span className="text-sm text-muted-foreground">
-              {formatDate(latestOccurrence.occurence_date)}
-            </span>
-          )}
+          <span className="text-sm text-muted-foreground">
+            {className}
+            {latestOccurrence && ` — ${formatDate(latestOccurrence.occurence_date)}`}
+          </span>
         </div>
 
         {/* Delete last occurrence — admin only */}
@@ -409,26 +410,6 @@ function AttendanceList({
 
   const endpoint = getEndpoint(eventOccurrenceId, type);
 
-  // ------- navigation guard -------
-
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      currentLocation.pathname !== nextLocation.pathname && unsavedRef.current
-  );
-
-  useEffect(() => {
-    if (blocker.state === "blocked") {
-      const leave = window.confirm(
-        "لديك تغييرات غير محفوظة في سبب الغياب. هل تريد المغادرة؟"
-      );
-      if (leave) {
-        blocker.proceed();
-      } else {
-        blocker.reset();
-      }
-    }
-  }, [blocker]);
-
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
       if (unsavedRef.current) {
@@ -604,7 +585,7 @@ function AttendanceList({
           if (stored.changes[p.person_id] !== undefined) {
             updated.attended = stored.changes[p.person_id];
           }
-          if (!updated.attended && stored.reasons[p.person_id]) {
+          if (!updated.attended && stored.reasons[p.person_id] !== undefined) {
             updated.absence_reason = stored.reasons[p.person_id];
           }
           return updated;
@@ -669,14 +650,7 @@ function AttendanceList({
   function handleReasonBlur(personId: number, reason: string) {
     reasonsRef.current[personId] = reason;
     persistToStorage();
-
-    if (reason) {
-      markDirty();
-    } else {
-      delete reasonsRef.current[personId];
-      persistToStorage();
-    }
-
+    markDirty();
     unsavedRef.current = false;
   }
 
@@ -812,7 +786,10 @@ function AttendanceList({
                   size="sm"
                   variant="outline"
                   className="text-xs self-start"
-                  onClick={() => setReasonExpanded((prev) => ({ ...prev, [person.person_id]: false }))}
+                  onClick={() => {
+                    (document.activeElement as HTMLElement | null)?.blur();
+                    setReasonExpanded((prev) => ({ ...prev, [person.person_id]: false }));
+                  }}
                 >
                   تم
                 </Button>

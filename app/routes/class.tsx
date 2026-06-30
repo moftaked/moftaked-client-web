@@ -4,7 +4,12 @@ import { useSearchFilter } from "~/contexts/search-context";
 import { useRouteState } from "~/contexts/route-state-context";
 import api from "~/lib/api";
 import type { Route } from "./+types/class";
-import { fetchAndCache, resetTimestampCache } from "~/lib/sync-manager";
+import {
+  fetchAndCache,
+  resetTimestampCache,
+  registerFetcher,
+  unregisterFetcher,
+} from "~/lib/sync-manager";
 import { Skeleton } from "~/components/ui/skeleton";
 import { cn, isManager } from "~/lib/utils";
 import { classStudentsKey, classTeachersKey, DISTRICTS_KEY, removeCached } from "~/lib/offline-db";
@@ -1032,6 +1037,24 @@ export default function Class({ loaderData }: Route.ComponentProps) {
   const [avatarVersion, setAvatarVersion] = useState(1);
   const location = useLocation();
   const { saveState, restoreState } = useRouteState();
+
+  // Register fetchers so backgroundSync can re-fetch when data changes
+  useEffect(() => {
+    const sk = classStudentsKey(classId);
+    const tk = classTeachersKey(classId);
+    registerFetcher(sk, async () => {
+      const res = await api.get<{ success: boolean; data: Student[] }>(`/classes/${classId}/students`);
+      return res.data.data;
+    });
+    registerFetcher(tk, async () => {
+      const res = await api.get<{ success: boolean; data: Teacher[] }>(`/classes/${classId}/teachers`);
+      return res.data.data;
+    });
+    return () => {
+      unregisterFetcher(sk);
+      unregisterFetcher(tk);
+    };
+  }, [classId]);
 
   const savedState = restoreState(location.pathname) ?? {};
 

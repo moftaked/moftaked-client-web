@@ -15,7 +15,6 @@ export default [
     route("/more", "routes/more.tsx"),
     route("/settings", "routes/settings.tsx"),
     route("/admin/accounts", "routes/admin-accounts.tsx"),
-    route("/admin/persons", "routes/admin-persons.tsx"),
     route("/admin/classes", "routes/admin-classes.tsx"),
     route("/admin/events", "routes/admin-events.tsx"),
     route("/admin/districts", "routes/admin-districts.tsx"),

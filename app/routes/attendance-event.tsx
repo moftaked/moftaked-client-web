@@ -206,7 +206,7 @@ export default function AttendanceEvent({
       // Invalidate occurrence cache so fresh data is loaded on next visit
       resetTimestampCache();
       await removeCached(eventOccurrencesKey(eventId));
-      navigate(`/attendance/${classId}`);
+      navigate(`/attendance/${classId}`, { replace: true });
     } catch {
       setDeleting(false);
     }

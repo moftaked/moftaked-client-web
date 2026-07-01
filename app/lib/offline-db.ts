@@ -302,6 +302,15 @@ export function personProfileKey(personId: number | string, type: "student" | "t
 
 export const CLASSES_KEY = "classes";
 export const DISTRICTS_KEY = "districts";
+export const EQUIPMENT_GROUPS_KEY = "equipment_groups";
+
+export function equipmentGroupItemsKey(groupId: number | string): string {
+  return `equipment_group_${groupId}_items`;
+}
+
+export function equipmentSubgroupsKey(groupId: number | string): string {
+  return `equipment_group_${groupId}_subgroups`;
+}
 
 // ---------------------------------------------------------------------------
 // Utility: clear all offline data (e.g. on logout)

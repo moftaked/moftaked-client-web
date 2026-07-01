@@ -50,9 +50,12 @@ const prefetchApi = new Proxy(api, {
 import {
   CLASSES_KEY,
   DISTRICTS_KEY,
+  EQUIPMENT_GROUPS_KEY,
   classEventsKey,
   classStudentsKey,
   classTeachersKey,
+  equipmentGroupItemsKey,
+  equipmentSubgroupsKey,
   eventOccurrencesKey,
   occurrenceAttendanceKey,
   personProfileKey,
@@ -286,6 +289,9 @@ async function _doPrefetch(): Promise<void> {
     const res = await prefetchApi.get<{ success: boolean; data: District[] }>("/districts");
     return res.data.data;
   });
+
+  // Equipment groups — only if user has access to at least one group
+  const equipmentPromise = _prefetchEquipment();
 
   // Collect base data (events, students, teachers) for all classes
   const classScopeResults = await Promise.allSettled(
@@ -611,6 +617,96 @@ async function _prefetchPhoto(photoLink: string): Promise<void> {
       await cache.put(url, response);
     } catch {
       // Best-effort per size
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Equipment prefetch
+// ---------------------------------------------------------------------------
+
+interface EquipmentGroup {
+  group_id: number;
+  group_name: string;
+  access_level: string;
+}
+
+interface EquipmentItem {
+  equipment_id: number;
+  photo: string | null;
+}
+
+interface Subgroup {
+  subgroup_id: number;
+  name: string;
+}
+
+async function _prefetchEquipment(): Promise<void> {
+  try {
+    const groups = await uncachedFetchAndCache<EquipmentGroup[]>(
+      EQUIPMENT_GROUPS_KEY,
+      async () => {
+        const res = await prefetchApi.get<{ success: boolean; data: EquipmentGroup[] }>("/equipment/groups");
+        return res.data.data;
+      },
+    );
+
+    if (!groups || groups.length === 0) return;
+
+    localStorage.setItem("hasEquipmentAccess", "true");
+
+    await Promise.allSettled(
+      groups.map((group) => _prefetchEquipmentGroup(group.group_id)),
+    );
+  } catch {
+    // Best-effort
+  }
+}
+
+async function _prefetchEquipmentGroup(groupId: number): Promise<void> {
+  await Promise.allSettled([
+    uncachedFetchAndCache<EquipmentItem[]>(
+      equipmentGroupItemsKey(groupId),
+      async () => {
+        const res = await prefetchApi.get<{ success: boolean; data: EquipmentItem[] }>(
+          `/equipment/groups/${groupId}/items`,
+        );
+        return res.data.data;
+      },
+    ),
+    uncachedFetchAndCache<Subgroup[]>(
+      equipmentSubgroupsKey(groupId),
+      async () => {
+        const res = await prefetchApi.get<{ success: boolean; data: Subgroup[] }>(
+          `/equipment/groups/${groupId}/subgroups`,
+        );
+        return res.data.data;
+      },
+    ),
+  ]);
+
+  // Prefetch equipment photos
+  const cached = await getCached<EquipmentItem[]>(equipmentGroupItemsKey(groupId));
+  if (!cached?.data) return;
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+  if (!token) return;
+
+  const photoCache = await caches.open("photo-cache");
+  for (const item of cached.data) {
+    if (!item.photo) continue;
+    const base = item.photo.replace(/\.webp$/, "").replace(/-(sm|md|lg)$/, "");
+    for (const size of ["sm", "md"] as const) {
+      const url = `${import.meta.env.VITE_API_URL ?? ""}/equipment/photos/${base}-${size}.webp`;
+      try {
+        const existing = await photoCache.match(url);
+        if (existing) continue;
+        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!response.ok) continue;
+        await photoCache.put(url, response);
+      } catch {
+        // Best-effort per photo
+      }
     }
   }
 }

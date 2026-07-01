@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { getPhotoUrl } from "~/lib/utils";
+import { getPhotoUrl, getEquipmentPhotoUrl } from "~/lib/utils";
 
 type PhotoSize = "sm" | "md" | "lg";
+
+type UrlBuilder = typeof getPhotoUrl;
 
 interface UsePhotoBlobUrlResult {
   blobUrl: string | null;
@@ -12,6 +14,7 @@ interface UsePhotoBlobUrlResult {
 export function usePhotoBlobUrl(
   photoLink: string | null | undefined,
   size: PhotoSize = "md",
+  urlBuilder: UrlBuilder = getPhotoUrl,
 ): UsePhotoBlobUrlResult {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,7 +34,7 @@ export function usePhotoBlobUrl(
     setBlobUrl(null);
     setError(false);
 
-    const url = getPhotoUrl(photoLink, size);
+    const url = urlBuilder(photoLink, size);
     if (!url) {
       setLoading(false);
       return;

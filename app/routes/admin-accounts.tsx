@@ -257,6 +257,18 @@ function AccountCard({
   onAssignRole: () => void;
   onDelete: () => void;
 }) {
+  const [usernameCopied, setUsernameCopied] = useState(false);
+
+  async function copyUsername() {
+    try {
+      await navigator.clipboard.writeText(account.username);
+      setUsernameCopied(true);
+      setTimeout(() => setUsernameCopied(false), 2000);
+    } catch {
+      // silent
+    }
+  }
+
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 p-4">
@@ -265,6 +277,18 @@ function AccountCard({
               <span className="font-semibold text-base truncate">{account.real_name}</span>
               <span className="text-sm text-muted-foreground font-mono" dir="ltr">
                 @{account.username}
+                <button
+                  type="button"
+                  onClick={copyUsername}
+                  className="inline-flex items-center justify-center mr-1.5 align-middle size-5 rounded hover:bg-muted transition-colors"
+                  title="نسخ اسم المستخدم"
+                >
+                  {usernameCopied ? (
+                    <Check className="size-3 text-green-600" />
+                  ) : (
+                    <Copy className="size-3" />
+                  )}
+                </button>
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">

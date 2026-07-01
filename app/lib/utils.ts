@@ -105,6 +105,15 @@ export function getPhotoUrl(
  * Fetch an authenticated photo URL and return a blob URL.
  * Falls back to `null` when the user is not logged in or the fetch fails.
  */
+export function getEquipmentPhotoUrl(
+  photoLink: string | null | undefined,
+  size: PhotoSize = "md",
+): string | null {
+  if (!photoLink) return null;
+  const base = photoLink.replace(/\.webp$/, "").replace(/-(sm|md|lg)$/, "");
+  return `${API_URL}/equipment/photos/${base}-${size}.webp`;
+}
+
 export async function fetchPhotoBlobUrl(
   photoLink: string | null | undefined,
   size: PhotoSize = "md",

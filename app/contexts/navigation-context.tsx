@@ -1,6 +1,10 @@
-import { createContext, useContext } from "react";
-import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, School, CalendarDays, Map, Settings, type LucideProps } from "lucide-react";
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, School, CalendarDays, Map, Settings, Lightbulb, type LucideProps } from "lucide-react";
 import { isAdmin, isManager } from "~/lib/utils";
+
+function hasEquipmentAccess(): boolean {
+  return localStorage.getItem("hasEquipmentAccess") === "true";
+}
 
 export interface NavigationItem {
   title: string;
@@ -12,6 +16,8 @@ export interface NavigationItem {
   adminOnly?: boolean;
   /** When true, only shown if the user is a manager or admin */
   managerOnly?: boolean;
+  /** When true, shown if admin or has equipment access */
+  equipmentOnly?: boolean;
 }
 
 export interface NavigationConfig {
@@ -75,6 +81,14 @@ const navigationItems: NavigationItem[] = [
     showInBottomNav: false,
     managerOnly: true,
   },
+  {
+    title: "وسائل الإيضاح",
+    url: "/equipment",
+    icon: Lightbulb,
+    showInSidebar: true,
+    showInBottomNav: true,
+    equipmentOnly: true,
+  },
   { 
     title: "زيادات", 
     url: "/more", 
@@ -94,9 +108,11 @@ const navigationItems: NavigationItem[] = [
 function filterByRole(items: NavigationItem[]): NavigationItem[] {
   const userIsAdmin = isAdmin();
   const userIsManager = isManager();
+  const userHasEquipment = hasEquipmentAccess();
   return items.filter(item => {
     if (item.adminOnly && !userIsAdmin) return false;
     if (item.managerOnly && !userIsManager) return false;
+    if (item.equipmentOnly && !userIsAdmin && !userHasEquipment) return false;
     return true;
   });
 }
@@ -115,9 +131,15 @@ function buildNavigationConfig(): NavigationConfig {
 const NavigationContext = createContext<NavigationConfig>(buildNavigationConfig());
 
 export function NavigationProvider({ children }: { children: React.ReactNode }) {
-  // Rebuild the config on every render so role checks re-evaluate after login
-  // (isManager() reads from localStorage which may change between renders).
-  const config = buildNavigationConfig();
+  const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    const handler = () => setRevision((r) => r + 1);
+    window.addEventListener("equipment-access-changed", handler);
+    return () => window.removeEventListener("equipment-access-changed", handler);
+  }, []);
+
+  const config = useMemo(() => buildNavigationConfig(), [revision]);
 
   return (
     <NavigationContext.Provider value={config}>

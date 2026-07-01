@@ -105,6 +105,14 @@ export async function fetchServerTimestamps(
     // Persist the last check time
     await setMeta(LAST_SYNC_CHECK_KEY, new Date().toISOString());
 
+    // Update equipment nav visibility based on sync response.
+    // If any timestamp key starts with "equipment_group", the user has access.
+    const hasEquipment = Object.keys(serverTimestamps).some((k) =>
+      k.startsWith("equipment_group"),
+    );
+    localStorage.setItem("hasEquipmentAccess", hasEquipment ? "true" : "false");
+    window.dispatchEvent(new CustomEvent("equipment-access-changed"));
+
     return serverTimestamps;
   } catch (error) {
     // Let redirect responses (e.g. 401 → /login) propagate
@@ -122,6 +130,7 @@ export async function fetchServerTimestamps(
 export function resetTimestampCache(): void {
   serverTimestamps = {};
   serverTimestampsFetchedAt = 0;
+  localStorage.removeItem("hasEquipmentAccess");
 }
 
 // ---------------------------------------------------------------------------

@@ -312,6 +312,10 @@ export function equipmentSubgroupsKey(groupId: number | string): string {
   return `equipment_group_${groupId}_subgroups`;
 }
 
+export function equipmentItemAttachmentsKey(itemId: number | string): string {
+  return `equipment_item_${itemId}_attachments`;
+}
+
 // ---------------------------------------------------------------------------
 // Utility: clear all offline data (e.g. on logout)
 // ---------------------------------------------------------------------------

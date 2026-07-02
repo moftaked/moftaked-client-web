@@ -1,6 +1,6 @@
 import type { Route } from "./+types/equipment-group";
 import api from "~/lib/api";
-import { fetchAndCache, resetTimestampCache, registerFetcher, unregisterFetcher } from "~/lib/sync-manager";
+import { forceFetchAndCache, resetTimestampCache, registerFetcher, unregisterFetcher } from "~/lib/sync-manager";
 import { equipmentGroupItemsKey, equipmentSubgroupsKey, removeCached } from "~/lib/offline-db";
 import { getEquipmentPhotoUrl } from "~/lib/utils";
 import { usePhotoBlobUrl } from "~/hooks/use-photo-blob-url";
@@ -20,6 +20,7 @@ interface EquipmentItem {
   equipment_id: number;
   group_id: number;
   subgroup_id: number | null;
+  parent_equipment_id: number | null;
   name: string;
   description: string | null;
   quantity: number;
@@ -34,11 +35,11 @@ interface EquipmentSubgroup {
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const groupId = params.groupId;
   const [items, subgroups] = await Promise.all([
-    fetchAndCache<EquipmentItem[]>(
+    forceFetchAndCache<EquipmentItem[]>(
       equipmentGroupItemsKey(groupId),
       () => api.get(`/equipment/groups/${groupId}/items`).then(r => r.data.data),
     ),
-    fetchAndCache<EquipmentSubgroup[]>(
+    forceFetchAndCache<EquipmentSubgroup[]>(
       equipmentSubgroupsKey(groupId),
       () => api.get(`/equipment/groups/${groupId}/subgroups`).then(r => r.data.data),
     ),
@@ -189,7 +190,7 @@ export default function EquipmentGroup({ loaderData }: Route.ComponentProps) {
 
 function CreateItemSheet({
   groupId,
-  subgroups,
+  subgroups: initialSubgroups,
   open,
   onOpenChange,
   onSuccess,
@@ -205,6 +206,38 @@ function CreateItemSheet({
   const [quantity, setQuantity] = useState("1");
   const [subgroupId, setSubgroupId] = useState<string>("none");
   const [loading, setLoading] = useState(false);
+  const [showNewSubgroup, setShowNewSubgroup] = useState(false);
+  const [newSubgroupName, setNewSubgroupName] = useState("");
+  const [creatingSubgroup, setCreatingSubgroup] = useState(false);
+  const [subgroups, setSubgroups] = useState(initialSubgroups);
+
+  useEffect(() => {
+    setSubgroups(initialSubgroups);
+  }, [initialSubgroups]);
+
+  async function handleCreateSubgroup() {
+    if (!newSubgroupName.trim()) return;
+    setCreatingSubgroup(true);
+    try {
+      const res = await api.post<{ success: boolean; data: { subgroup_id: number } }>(
+        `/equipment/groups/${groupId}/subgroups`,
+        { name: newSubgroupName.trim() },
+      );
+      const newSg: EquipmentSubgroup = {
+        subgroup_id: res.data.data.subgroup_id,
+        name: newSubgroupName.trim(),
+      };
+      setSubgroups((prev) => [...prev, newSg]);
+      setSubgroupId(String(newSg.subgroup_id));
+      setNewSubgroupName("");
+      setShowNewSubgroup(false);
+      toast.success("تم إنشاء الصنف");
+    } catch {
+      toast.error("فشل إنشاء الصنف");
+    } finally {
+      setCreatingSubgroup(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -267,24 +300,62 @@ function CreateItemSheet({
               className="mt-1"
             />
           </label>
-          {subgroups.length > 0 && (
-            <label className="text-sm font-medium text-muted-foreground">
-              المجموعة الفرعية
-              <Select value={subgroupId} onValueChange={setSubgroupId}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="مجموعة فرعية (اختياري)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">بدون</SelectItem>
-                  {subgroups.map((sg: EquipmentSubgroup) => (
-                    <SelectItem key={sg.subgroup_id} value={String(sg.subgroup_id)}>
-                      {sg.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          )}
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">الصنف</label>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex-1">
+                <Select value={subgroupId} onValueChange={setSubgroupId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="صنف (اختياري)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">بدون</SelectItem>
+                    {subgroups.map((sg: EquipmentSubgroup) => (
+                      <SelectItem key={sg.subgroup_id} value={String(sg.subgroup_id)}>
+                        {sg.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setShowNewSubgroup(true)}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
+            {showNewSubgroup && (
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  placeholder="اسم الصنف"
+                  value={newSubgroupName}
+                  onChange={(e) => setNewSubgroupName(e.target.value)}
+                  className="flex-1"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={creatingSubgroup || !newSubgroupName.trim()}
+                  onClick={handleCreateSubgroup}
+                >
+                  {creatingSubgroup ? <Loader2 className="size-3 animate-spin" /> : "إنشاء"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setShowNewSubgroup(false); setNewSubgroupName(""); }}
+                >
+                  إلغاء
+                </Button>
+              </div>
+            )}
+          </div>
           <Button type="submit" disabled={loading || !name.trim()}>
             {loading && <Loader2 className="size-4 animate-spin" />}
             إنشاء
@@ -315,7 +386,12 @@ function ItemCard({
     : null;
 
   return (
-    <Card className="cursor-pointer transition-colors hover:bg-accent/50 w-full" onClick={onClick}>
+    <Card className="cursor-pointer transition-colors hover:bg-accent/50 w-full relative" onClick={onClick}>
+      {item.parent_equipment_id && (
+        <Badge variant="outline" className="absolute top-2 left-2 text-[10px] px-1.5 py-0 h-5">
+          مرفق
+        </Badge>
+      )}
       <CardContent className="p-4 flex flex-col items-center gap-3">
         {blobUrl ? (
           <div className="size-32 rounded-lg overflow-hidden shrink-0 bg-muted">

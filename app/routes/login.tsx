@@ -47,6 +47,9 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     const response = await api.post('/auth/login', { username, password });
     localStorage.setItem('authToken', response.data.data.access_token);
     localStorage.setItem('isAdmin', response.data.data.is_admin ? 'true' : 'false');
+    if (response.data.data.account_id) {
+      localStorage.setItem('accountId', String(response.data.data.account_id));
+    }
     if (response.data.data.roles) {
       localStorage.setItem('userRoles', response.data.data.roles);
     }

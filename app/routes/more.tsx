@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Logout } from "~/components/logout";
 import { ModeToggle } from "~/components/mode-toggle";
 import { isAdmin } from "~/lib/utils";
 import { Link } from "react-router";
-import { ShieldCheck, School, CalendarDays, MapPin, Trash2, Bug, Settings } from "lucide-react";
+import { ShieldCheck, School, CalendarDays, MapPin, Trash2, Bug, Settings, Bell } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -27,10 +27,48 @@ import {
 import { clearAllOfflineData } from "~/lib/offline-db";
 import { resetTimestampCache } from "~/lib/sync-manager";
 import { getConsoleBuffer } from "~/lib/console-buffer";
+import { registerFcmToken, unregisterFcmToken } from "~/lib/firebase";
+import { Switch } from "~/components/ui/switch";
 
 export default function More() {
   const userIsAdmin = isAdmin();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      setNotificationsEnabled(true);
+    }
+  }, []);
+
+  async function handleToggleNotifications(checked: boolean) {
+    if (checked) {
+      if (!("Notification" in window)) {
+        toast.error("الإشعارات غير مدعومة في هذا المتصفح");
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        setNotificationsEnabled(true);
+        try {
+          await registerFcmToken();
+          toast.success("تم تفعيل الإشعارات");
+        } catch {
+          toast.error("فشل تسجيل الجهاز للإشعارات");
+        }
+      } else {
+        toast.error("تم رفض الإذن بالإشعارات");
+      }
+    } else {
+      setNotificationsEnabled(false);
+      try {
+        await unregisterFcmToken();
+      } catch {
+        // Best-effort
+      }
+      toast.success("تم إيقاف الإشعارات");
+    }
+  }
 
   async function handleClearData() {
     const keysToRemove = ["authToken", "userRoles", "vite-ui-theme", "sidebar_state"];
@@ -103,6 +141,20 @@ export default function More() {
           <SheetHeader>
             <SheetTitle>الإعدادات</SheetTitle>
           </SheetHeader>
+
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <Bell className="size-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">الإشعارات</p>
+                <p className="text-xs text-muted-foreground">استلام إشعارات فورية</p>
+              </div>
+            </div>
+            <Switch
+              checked={notificationsEnabled}
+              onCheckedChange={handleToggleNotifications}
+            />
+          </div>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>

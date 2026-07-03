@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useMemo } from "react";
-import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, School, CalendarDays, Map, Settings, Lightbulb, type LucideProps } from "lucide-react";
+import { HomeIcon, MenuIcon, CalendarCheck, BarChart3, ShieldCheck, School, CalendarDays, Map, Settings, Lightbulb, ClipboardList, type LucideProps } from "lucide-react";
 import { isAdmin, isManager } from "~/lib/utils";
 
 function hasEquipmentAccess(): boolean {
@@ -80,6 +80,13 @@ const navigationItems: NavigationItem[] = [
     showInSidebar: true,
     showInBottomNav: false,
     managerOnly: true,
+  },
+  {
+    title: "الحجوزات",
+    url: "/reservations",
+    icon: ClipboardList,
+    showInSidebar: true,
+    showInBottomNav: true,
   },
   {
     title: "وسائل الإيضاح",

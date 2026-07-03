@@ -1,3 +1,45 @@
+import { initializeApp } from "firebase/app";
+import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+if (firebaseConfig.apiKey) {
+  const app = initializeApp(firebaseConfig);
+  const messaging = getMessaging(app);
+
+  onBackgroundMessage(messaging, (payload) => {
+    const data = payload.data || {};
+    const title = data.title || payload.notification?.title || "إشعار جديد";
+    const body = data.body || payload.notification?.body || "";
+    const icon = data.icon || "/icons/icon-192x192.png";
+
+    self.registration.showNotification(title, {
+      body,
+      icon,
+      badge: "/icons/icon-192x192.png",
+      data: { url: data.url || "/" },
+    });
+  });
+}
+
+self.addEventListener("notificationclick", (event: NotificationEvent) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const matching = clients.find((c) => c.url.includes(url) && "focus" in c);
+      if (matching) return matching.focus();
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
 const manifest: Array<{ url: string; revision: string | null } | string> =
   (self as any).__WB_MANIFEST || []
 

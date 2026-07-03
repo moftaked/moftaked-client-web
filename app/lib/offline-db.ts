@@ -316,6 +316,12 @@ export function equipmentItemAttachmentsKey(itemId: number | string): string {
   return `equipment_item_${itemId}_attachments`;
 }
 
+export const RESERVATIONS_KEY = "equipment_reservations";
+
+export function reservationKey(reservationId: number | string): string {
+  return `equipment_reservation_${reservationId}`;
+}
+
 // ---------------------------------------------------------------------------
 // Utility: clear all offline data (e.g. on logout)
 // ---------------------------------------------------------------------------

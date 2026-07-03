@@ -214,7 +214,7 @@ function CreateReservationSheet({
     if (!selectedClassId) { setTeachers([]); return; }
     api.get<{ success: boolean; data: { teacher_id: number; teacher_name: string }[] }>(`/classes/${selectedClassId}/teachers`)
       .then(r => setTeachers(r.data.data))
-      .catch(() => toast.error("فشل تحميل المعلمين"));
+      .catch(() => toast.error("فشل تحميل الخدام"));
   }, [selectedClassId]);
 
   const filteredTeachers = receiverSearch.trim()
@@ -274,7 +274,7 @@ function CreateReservationSheet({
               <div className="relative flex-1">
                 <Search className="size-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <Input
-                  placeholder="ابحث باسم المعلم..."
+                  placeholder="ابحث باسم الخادم..."
                   value={receiverSearch}
                   onChange={(e) => { setReceiverSearch(e.target.value); setReceiverId(""); }}
                   className="pr-9"

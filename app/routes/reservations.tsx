@@ -204,8 +204,8 @@ function CreateReservationSheet({
     setPickupDatetime("");
     setReturnDatetime("");
     setNotes("");
-    api.get<{ success: boolean; data: { school_id: number; school_name: string; classes: ClassInfo[] }[] }>("/classes")
-      .then(r => setClasses(r.data.data.flatMap(s => s.classes)))
+    api.get<{ school_id: number; school_name: string; classes: ClassInfo[] }[]>("/classes")
+      .then(r => setClasses(r.data.flatMap(s => s.classes)))
       .catch(() => toast.error("فشل تحميل الفصول"));
     api.get<{ success: boolean; data: { account_id: number; username: string; real_name: string }[] }>("/accounts")
       .then(r => setAccounts(r.data.data))

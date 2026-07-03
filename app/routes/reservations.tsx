@@ -20,7 +20,7 @@ interface Reservation {
   reservation_id: number;
   class_id: number;
   class_name: string;
-  receiver_account_id: number;
+  receiver_person_id: number;
   pickup_datetime: string;
   return_datetime: string;
   state: string;
@@ -120,7 +120,7 @@ export default function Reservations({ loaderData }: Route.ComponentProps) {
             .filter(r => {
               if (roleFilter === "all") return true;
               if (roleFilter === "created") return accountId !== null && r.created_by === accountId;
-              if (roleFilter === "receiving") return accountId !== null && r.receiver_account_id === accountId;
+              if (roleFilter === "receiving") return true;
               return true;
             })
             .map(r => (
@@ -189,7 +189,7 @@ function CreateReservationSheet({
   const [classId, setClassId] = useState<string>("");
   const [receiverId, setReceiverId] = useState<string>("");
   const [receiverSearch, setReceiverSearch] = useState("");
-  const [accounts, setAccounts] = useState<{ account_id: number; username: string; real_name: string }[]>([]);
+  const [teachers, setTeachers] = useState<{ teacher_id: number; teacher_name: string }[]>([]);
   const [pickupDatetime, setPickupDatetime] = useState("");
   const [returnDatetime, setReturnDatetime] = useState("");
   const [notes, setNotes] = useState("");
@@ -200,23 +200,26 @@ function CreateReservationSheet({
     setClassId("");
     setReceiverId("");
     setReceiverSearch("");
-    setAccounts([]);
+    setTeachers([]);
     setPickupDatetime("");
     setReturnDatetime("");
     setNotes("");
     api.get<{ school_id: number; school_name: string; classes: ClassInfo[] }[]>("/classes")
       .then(r => setClasses(r.data.flatMap(s => s.classes)))
       .catch(() => toast.error("فشل تحميل الفصول"));
-    api.get<{ success: boolean; data: { account_id: number; username: string; real_name: string }[] }>("/accounts")
-      .then(r => setAccounts(r.data.data))
-      .catch(() => {});
   }, [open]);
 
-  const filteredAccounts = receiverSearch.trim()
-    ? accounts.filter(a =>
-        a.real_name.includes(receiverSearch.trim()) || a.username.includes(receiverSearch.trim())
-      )
-    : accounts;
+  const selectedClassId = classId ? parseInt(classId, 10) : null;
+  useEffect(() => {
+    if (!selectedClassId) { setTeachers([]); return; }
+    api.get<{ success: boolean; data: { teacher_id: number; teacher_name: string }[] }>(`/classes/${selectedClassId}/teachers`)
+      .then(r => setTeachers(r.data.data))
+      .catch(() => toast.error("فشل تحميل المعلمين"));
+  }, [selectedClassId]);
+
+  const filteredTeachers = receiverSearch.trim()
+    ? teachers.filter(t => t.teacher_name.includes(receiverSearch.trim()))
+    : teachers;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -229,7 +232,7 @@ function CreateReservationSheet({
     try {
       await api.post("/reservations", {
         class_id: parseInt(classId, 10),
-        receiver_account_id: parseInt(receiverId, 10),
+        receiver_person_id: parseInt(receiverId, 10),
         pickup_datetime: pickupDatetime,
         return_datetime: returnDatetime,
         notes: notes.trim() || null,
@@ -271,27 +274,27 @@ function CreateReservationSheet({
               <div className="relative flex-1">
                 <Search className="size-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <Input
-                  placeholder="ابحث باسم المستخدم..."
+                  placeholder="ابحث باسم المعلم..."
                   value={receiverSearch}
                   onChange={(e) => { setReceiverSearch(e.target.value); setReceiverId(""); }}
                   className="pr-9"
                 />
               </div>
             </div>
-            {receiverSearch.trim() && filteredAccounts.length > 0 && (
+            {receiverSearch.trim() && filteredTeachers.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2 max-h-32 overflow-y-auto">
-                {filteredAccounts.slice(0, 20).map(a => (
+                {filteredTeachers.slice(0, 20).map(t => (
                   <button
-                    key={a.account_id}
+                    key={t.teacher_id}
                     type="button"
-                    onClick={() => { setReceiverId(String(a.account_id)); setReceiverSearch(a.real_name || a.username); }}
+                    onClick={() => { setReceiverId(String(t.teacher_id)); setReceiverSearch(t.teacher_name); }}
                     className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                      receiverId === String(a.account_id)
+                      receiverId === String(t.teacher_id)
                         ? "bg-primary text-primary-foreground border-primary"
                         : "hover:bg-accent"
                     }`}
                   >
-                    {a.real_name || a.username}
+                    {t.teacher_name}
                   </button>
                 ))}
               </div>

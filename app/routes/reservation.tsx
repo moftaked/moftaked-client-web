@@ -20,7 +20,7 @@ interface ReservationDetail {
   reservation_id: number;
   class_id: number;
   class_name: string;
-  receiver_account_id: number;
+  receiver_person_id: number;
   pickup_datetime: string;
   return_datetime: string;
   state: ReservationState;

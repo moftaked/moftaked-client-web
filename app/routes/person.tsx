@@ -235,14 +235,20 @@ export default function PersonPage({ loaderData }: Route.ComponentProps) {
     setEditSubmitting(true);
     try {
       const paramKey = type === "student" ? "students" : "teachers";
-      await api.put(`/persons/${paramKey}/${personId}`, {
+      const payload: Record<string, unknown> = {
         name: editName.trim(),
         phone_number: editPhone.trim(),
-        second_phone_number: editPhone2.trim(),
         address: editAddress.trim(),
-        notes: editNotes.trim(),
         district_id: editDistrictId ? Number(editDistrictId) : null,
-      });
+      };
+      if (editPhone2.trim()) {
+        payload.second_phone_number = editPhone2.trim();
+      }
+      if (editNotes.trim()) {
+        payload.notes = editNotes.trim();
+      }
+
+      await api.put(`/persons/${paramKey}/${personId}`, payload);
       resetTimestampCache();
       await Promise.all(
         person.classes.map((cls) => {

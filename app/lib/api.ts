@@ -3,6 +3,7 @@ import axios from 'axios';
 declare module 'axios' {
   interface AxiosRequestConfig {
     __suppressGlobalError?: boolean;
+    _retryCount?: number;
   }
 }
 
@@ -49,6 +50,13 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    const isTimeoutOrNetwork = error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK';
+    if (isTimeoutOrNetwork && originalRequest && (!originalRequest._retryCount || originalRequest._retryCount < 2)) {
+      originalRequest._retryCount = (originalRequest._retryCount ?? 0) + 1;
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, originalRequest._retryCount)));
+      return api(originalRequest);
+    }
 
     // All 401s → refresh or redirect, NEVER show error dialog
     if (error.response?.status === 401) {

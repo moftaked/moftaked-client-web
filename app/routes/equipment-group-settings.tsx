@@ -79,11 +79,11 @@ export default function EquipmentGroupSettings({ loaderData }: Route.ComponentPr
         removeCached(equipmentGroupItemsKey(groupId)),
         removeCached(equipmentSubgroupsKey(groupId)),
       ]);
-      toast.success("تم إنشاء المجموعة الفرعية");
+      toast.success("تم إنشاء الصنف");
       setSubgroupName("");
       revalidator.revalidate();
     } catch {
-      toast.error("فشل إنشاء المجموعة الفرعية");
+      toast.error("فشل إنشاء الصنف");
     } finally {
       setAddingSubgroup(false);
     }
@@ -221,7 +221,7 @@ export default function EquipmentGroupSettings({ loaderData }: Route.ComponentPr
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
-                        <AlertDialogDescription>حذف هذه المجموعة الفرعية؟</AlertDialogDescription>
+                        <AlertDialogDescription>حذف هذه الصنف؟</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>لأ</AlertDialogCancel>
@@ -235,7 +235,7 @@ export default function EquipmentGroupSettings({ loaderData }: Route.ComponentPr
           ))}
           <form onSubmit={handleAddSubgroup} className="flex items-center gap-2">
             <Input
-              placeholder="اسم المجموعة الفرعية"
+              placeholder="اسم الصنف"
               value={subgroupName}
               onChange={(e) => setSubgroupName(e.target.value)}
             />

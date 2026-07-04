@@ -55,6 +55,7 @@ import {
   classStudentsKey,
   classTeachersKey,
   equipmentGroupItemsKey,
+  equipmentItemAttachmentsKey,
   equipmentSubgroupsKey,
   eventOccurrencesKey,
   occurrenceAttendanceKey,
@@ -633,6 +634,7 @@ interface EquipmentGroup {
 
 interface EquipmentItem {
   equipment_id: number;
+  parent_equipment_id: number | null;
   photo: string | null;
 }
 
@@ -685,7 +687,7 @@ async function _prefetchEquipmentGroup(groupId: number): Promise<void> {
     ),
   ]);
 
-  // Prefetch equipment photos
+  // Prefetch equipment photos (attachments included — they appear in items list)
   const cached = await getCached<EquipmentItem[]>(equipmentGroupItemsKey(groupId));
   if (!cached?.data) return;
 
@@ -709,4 +711,20 @@ async function _prefetchEquipmentGroup(groupId: number): Promise<void> {
       }
     }
   }
+
+  // Prefetch attachment data for top-level items
+  const topLevelItems = cached.data.filter((i) => !i.parent_equipment_id);
+  await Promise.allSettled(
+    topLevelItems.map((item) =>
+      uncachedFetchAndCache<EquipmentItem[]>(
+        equipmentItemAttachmentsKey(item.equipment_id),
+        async () => {
+          const res = await prefetchApi.get<{ success: boolean; data: EquipmentItem[] }>(
+            `/equipment/groups/${groupId}/items/${item.equipment_id}/attachments`,
+          );
+          return res.data.data;
+        },
+      ),
+    ),
+  );
 }

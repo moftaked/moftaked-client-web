@@ -12,6 +12,13 @@ export function isAuthenticated() {
   return true;
 }
 
+export function getAccountId(): number | null {
+  const raw = localStorage.getItem("accountId");
+  if (!raw) return null;
+  const id = parseInt(raw, 10);
+  return isNaN(id) ? null : id;
+}
+
 // ---------------------------------------------------------------------------
 // Role helpers
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import type { Route } from "./+types/equipment";
 import api from "~/lib/api";
-import { fetchAndCache, resetTimestampCache } from "~/lib/sync-manager";
+import { forceFetchAndCache, resetTimestampCache } from "~/lib/sync-manager";
 import { EQUIPMENT_GROUPS_KEY, removeCached } from "~/lib/offline-db";
 import { isAdmin } from "~/lib/utils";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -20,7 +20,7 @@ interface EquipmentGroup {
 }
 
 export async function clientLoader() {
-  const groups = await fetchAndCache<EquipmentGroup[]>(
+  const groups = await forceFetchAndCache<EquipmentGroup[]>(
     EQUIPMENT_GROUPS_KEY,
     async () => {
       const res = await api.get<{ success: boolean; data: EquipmentGroup[] }>("/equipment/groups");
@@ -61,12 +61,12 @@ export default function Equipment({ loaderData }: Route.ComponentProps) {
       await api.post("/equipment/groups", { group_name: groupName.trim() });
       resetTimestampCache();
       await removeCached(EQUIPMENT_GROUPS_KEY);
-      toast.success("تم إنشاء المجموعة");
+      toast.success("تم إنشاء الاوضة");
       setCreateOpen(false);
       setGroupName("");
       revalidator.revalidate();
     } catch {
-      toast.error("فشل إنشاء المجموعة");
+      toast.error("فشل إنشاء الاوضة");
     } finally {
       setCreating(false);
     }
@@ -79,7 +79,7 @@ export default function Equipment({ loaderData }: Route.ComponentProps) {
         {isAdmin() && (
           <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
-            مجموعة جديدة
+            اوضة جديدة
           </Button>
         )}
       </div>
@@ -91,7 +91,7 @@ export default function Equipment({ loaderData }: Route.ComponentProps) {
           {isAdmin() && (
             <Button variant="default" onClick={() => setCreateOpen(true)}>
               <Plus className="size-4" />
-              إنشاء أول مجموعة
+              إنشاء أول اوضة
             </Button>
           )}
         </div>
@@ -132,11 +132,11 @@ export default function Equipment({ loaderData }: Route.ComponentProps) {
       <Sheet open={createOpen} onOpenChange={setCreateOpen}>
         <SheetContent side="bottom" className="flex flex-col gap-4 pb-8">
           <SheetHeader>
-            <SheetTitle>مجموعة جديدة</SheetTitle>
+            <SheetTitle>اوضة جديدة</SheetTitle>
           </SheetHeader>
           <form onSubmit={handleCreateGroup} className="flex flex-col gap-4 px-4">
             <Input
-              placeholder="اسم المجموعة"
+              placeholder="اسم الاوضة"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               required

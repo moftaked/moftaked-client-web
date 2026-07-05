@@ -30,15 +30,22 @@ interface EquipmentSubgroup {
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const groupId = params.groupId;
-  const [members, subgroups] = await Promise.all([
+  const [members, subgroups, defaultReviewerData] = await Promise.all([
     api.get<{ success: boolean; data: EquipmentMember[] }>(
       `/equipment/groups/${groupId}/members`
     ).then(r => r.data.data),
     api.get<{ success: boolean; data: EquipmentSubgroup[] }>(
       `/equipment/groups/${groupId}/subgroups`
     ).then(r => r.data.data),
+    api.get<{ success: boolean; data: { default_reviewer_id: number | null } }>(
+      `/equipment/groups/${groupId}/default-reviewer`
+    ).then(r => r.data.data),
   ]);
-  return { groupId, members, subgroups };
+  const defaultReviewerId = defaultReviewerData.default_reviewer_id;
+  const organizerAccounts = members
+    .filter(m => m.access_level === "organizer")
+    .map(m => ({ account_id: m.account_id, username: m.username, real_name: m.real_name }));
+  return { groupId, members, subgroups, defaultReviewerId, organizerAccounts };
 }
 
 export function HydrateFallback() {
@@ -52,7 +59,7 @@ export function HydrateFallback() {
 }
 
 export default function EquipmentGroupSettings({ loaderData }: Route.ComponentProps) {
-  const { groupId, members, subgroups } = loaderData;
+  const { groupId, members, subgroups, defaultReviewerId, organizerAccounts } = loaderData;
   const revalidator = useRevalidator();
 
   const [subgroupName, setSubgroupName] = useState("");
@@ -67,6 +74,14 @@ export default function EquipmentGroupSettings({ loaderData }: Route.ComponentPr
   const [editSubgroupName, setEditSubgroupName] = useState("");
   const [editMemberTarget, setEditMemberTarget] = useState<EquipmentMember | null>(null);
   const [editMemberLevel, setEditMemberLevel] = useState<"organizer" | "member">("member");
+
+  const [reviewerSheetOpen, setReviewerSheetOpen] = useState(false);
+  const [savingReviewer, setSavingReviewer] = useState(false);
+  const [reviewerSearch, setReviewerSearch] = useState("");
+
+  const currentReviewer = defaultReviewerId
+    ? members.find(m => m.account_id === defaultReviewerId) ?? null
+    : null;
 
   async function handleAddSubgroup(e: React.FormEvent) {
     e.preventDefault();
@@ -174,6 +189,20 @@ export default function EquipmentGroupSettings({ loaderData }: Route.ComponentPr
       revalidator.revalidate();
     } catch {
       toast.error("فشل إزالة العضو");
+    }
+  }
+
+  async function handleSetReviewer(accountId: number | null) {
+    setSavingReviewer(true);
+    try {
+      await api.put(`/equipment/groups/${groupId}/default-reviewer`, { account_id: accountId });
+      toast.success(accountId ? "تم تعيين المراجع الاساسي" : "تم إزالة المراجع الاساسي");
+      setReviewerSheetOpen(false);
+      revalidator.revalidate();
+    } catch {
+      toast.error("فشل تعيين المراجع الاساسي");
+    } finally {
+      setSavingReviewer(false);
     }
   }
 
@@ -312,6 +341,76 @@ export default function EquipmentGroupSettings({ loaderData }: Route.ComponentPr
           </form>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="size-4" />
+            المراجع الاساسي
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {currentReviewer ? (
+            <div className="flex items-center justify-between py-1">
+              <div className="flex flex-col">
+                <span>{currentReviewer.real_name || currentReviewer.username}</span>
+                <span className="text-xs text-muted-foreground">{currentReviewer.username}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setReviewerSheetOpen(true)}>
+                  <Pencil className="size-3.5" />
+                  تغيير
+                </Button>
+                <Button variant="ghost" size="icon" className="size-8" onClick={() => handleSetReviewer(null)}>
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between py-1">
+              <p className="text-sm text-muted-foreground">لا يوجد مراجع اساسي</p>
+              <Button variant="outline" size="sm" onClick={() => { setReviewerSearch(""); setReviewerSheetOpen(true); }}>
+                <UserPlus className="size-3.5" />
+                تعيين
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Sheet open={reviewerSheetOpen} onOpenChange={setReviewerSheetOpen}>
+        <SheetContent side="bottom" className="flex flex-col gap-4 pb-8 max-h-[85dvh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>تعيين المراجع الاساسي</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-4 px-4">
+            <Input
+              placeholder="ابحث باسم المستخدم..."
+              value={reviewerSearch}
+              onChange={(e) => setReviewerSearch(e.target.value)}
+            />
+            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+              {organizerAccounts.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">لا يوجد خدام اوضة في المجموعة</p>
+              ) : (reviewerSearch.trim()
+                ? organizerAccounts.filter(a => a.real_name.includes(reviewerSearch.trim()) || a.username.includes(reviewerSearch.trim()))
+                : organizerAccounts
+              ).slice(0, 30).map(a => (
+                <button
+                  key={a.account_id}
+                  type="button"
+                  disabled={savingReviewer}
+                  onClick={() => handleSetReviewer(a.account_id)}
+                  className="flex items-center justify-between rounded-lg border p-2.5 text-start hover:bg-accent/50 transition-colors"
+                >
+                  <span className="text-sm font-medium">{a.real_name || a.username}</span>
+                  <span className="text-xs text-muted-foreground">{a.username}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={editMemberTarget !== null} onOpenChange={(o) => { if (!o) setEditMemberTarget(null); }}>
         <SheetContent side="bottom" className="max-h-[40dvh] overflow-y-auto">

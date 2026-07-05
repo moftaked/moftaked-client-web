@@ -16,7 +16,6 @@ export default [
     route("/equipment/:groupId", "routes/equipment-group.tsx"),
     route("/equipment/:groupId/items/:itemId", "routes/equipment-item.tsx"),
     route("/equipment/:groupId/settings", "routes/equipment-group-settings.tsx"),
-    route("/reservations", "routes/reservations.tsx"),
     route("/reservations/:reservationId", "routes/reservation.tsx"),
     route("/more", "routes/more.tsx"),
     route("/settings", "routes/settings.tsx"),

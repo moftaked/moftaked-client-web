@@ -549,6 +549,7 @@ function AttachmentForm({
           quantity: Math.max(1, parseInt(quantity, 10) || 1),
         });
       }
+      reset();
       onOpenChange(false);
     } catch {
       toast.error(isEdit ? "فشل تحديث الملحق" : "فشل إنشاء الملحق");

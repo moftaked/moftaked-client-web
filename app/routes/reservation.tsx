@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Route } from "./+types/reservation";
 import api from "~/lib/api";
 import { resetTimestampCache } from "~/lib/sync-manager";
 import { RESERVATIONS_KEY, reservationKey, removeCached } from "~/lib/offline-db";
+import { getAccountId, getEquipmentPhotoUrl } from "~/lib/utils";
+import { usePhotoBlobUrl } from "~/hooks/use-photo-blob-url";
 import { useRevalidator } from "react-router";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -12,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "~/components/ui/alert-dialog";
-import { Pencil, Trash2, Loader2, Calendar, Clock, User, Users, Check, X, Plus, Paperclip, Send, Search, Ban, PackageOpen, Package, RotateCcw, RefreshCw } from "lucide-react";
+import { DatePicker } from "~/components/ui/date-picker";
+import { Pencil, Trash2, Loader2, Calendar, Clock, User, Users, Check, X, Plus, Paperclip, Send, Search, Ban, PackageOpen, Package, RotateCcw, RefreshCw, Undo2, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
 
@@ -20,6 +23,7 @@ interface ReservationDetail {
   reservation_id: number;
   class_id: number;
   class_name: string;
+  group_id: number | null;
   receiver_person_id: number;
   pickup_datetime: string;
   return_datetime: string;
@@ -30,7 +34,9 @@ interface ReservationDetail {
   receiver_real_name: string;
   items: ReservationItem[];
   reviewers: ReservationReviewer[];
+  is_current_user_reviewer: boolean;
   history: ReservationHistory[];
+  rejection_reason: string | null;
 }
 
 interface ReservationItem {
@@ -44,6 +50,7 @@ interface ReservationItem {
   group_name: string;
   excluded_attachments: { attachment_id: number; attachment_name: string }[];
   all_attachments: { equipment_id: number; name: string; photo: string | null }[];
+  blocked_attachment_ids: number[];
 }
 
 interface ReservationReviewer {
@@ -66,7 +73,7 @@ interface ReservationHistory {
   real_name: string;
 }
 
-type ReservationState = 'draft' | 'waiting_for_approval' | 'reserved' | 'waiting_for_pickup' | 'picked_up' | 'waiting_for_return' | 'returned' | 'completed';
+type ReservationState = 'draft' | 'waiting_for_approval' | 'reserved' | 'waiting_for_pickup' | 'picked_up' | 'waiting_for_return' | 'returned';
 
 const STATE_LABELS: Record<ReservationState, string> = {
   draft: "مسودة",
@@ -76,7 +83,7 @@ const STATE_LABELS: Record<ReservationState, string> = {
   picked_up: "تم الاستلام",
   waiting_for_return: "بانتظار الإرجاع",
   returned: "تم الإرجاع",
-  completed: "مكتمل",
+
 };
 
 const STATE_COLORS: Record<ReservationState, string> = {
@@ -87,7 +94,7 @@ const STATE_COLORS: Record<ReservationState, string> = {
   picked_up: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
   waiting_for_return: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
   returned: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  completed: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+
 };
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
@@ -120,8 +127,9 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
   const revalidator = useRevalidator();
   const navigate = useNavigate();
   const [reservation, setReservation] = useState(initial);
+  useEffect(() => { setReservation(initial); }, [initial]);
   const isOrganizer = accessLevel === "organizer";
-  const isReviewer = reservation.reviewers.some(r => r.status === "pending");
+  const isReviewer = reservation.is_current_user_reviewer;
   const [editOpen, setEditOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [addReviewerOpen, setAddReviewerOpen] = useState(false);
@@ -129,10 +137,11 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
   const [rejectNotes, setRejectNotes] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const canEdit = ["draft", "waiting_for_approval", "reserved"].includes(reservation.state);
+  const canEdit = ["draft", "waiting_for_approval"].includes(reservation.state);
   const canDelete = ["draft", "waiting_for_approval"].includes(reservation.state);
-  const canSubmit = reservation.state === "draft" || reservation.state === "waiting_for_approval";
-  const canApprove = reservation.state === "waiting_for_approval";
+  const canSubmit = reservation.state === "draft";
+  const canUnsubmit = reservation.state === "waiting_for_approval" && (isOrganizer || reservation.created_by === getAccountId());
+  const canApprove = reservation.state === "waiting_for_approval" && isReviewer;
   const isStateDraft = reservation.state === "draft";
 
   async function refresh() {
@@ -148,20 +157,33 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
       await fn();
       toast.success("تمت العملية بنجاح");
       await refresh();
-    } catch {
-      toast.error("فشلت العملية");
+    } catch (err) {
+      const msg = (err as any)?.response?.data?.message || "فشلت العملية";
+      toast.error(msg);
     } finally {
       setActionLoading(null);
     }
   }
 
   async function handleDelete() {
-    await handleAction("delete", () => api.delete(`/reservations/${reservationId}`));
-    navigate("/reservations");
+    try {
+      await api.delete(`/reservations/${reservationId}`);
+      toast.success("تمت العملية بنجاح");
+      resetTimestampCache();
+      await removeCached(reservationKey(reservationId));
+      await removeCached(RESERVATIONS_KEY);
+      navigate(-1);
+    } catch {
+      toast.error("فشلت العملية");
+    }
   }
 
   async function handleSubmit() {
     await handleAction("submit", () => api.post(`/reservations/${reservationId}/submit`));
+  }
+
+  async function handleUnsubmit() {
+    await handleAction("unsubmit", () => api.post(`/reservations/${reservationId}/unsubmit`));
   }
 
   async function handleApprove() {
@@ -178,16 +200,20 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
     setRejectNotes("");
   }
 
+  async function handleMarkForPickup() {
+    await handleAction("mark-for-pickup", () => api.post(`/reservations/${reservationId}/mark-for-pickup`));
+  }
+
   async function handlePickUp() {
     await handleAction("pickup", () => api.post(`/reservations/${reservationId}/pick-up`));
   }
 
-  async function handleReturn() {
-    await handleAction("return", () => api.post(`/reservations/${reservationId}/return`));
+  async function handleMarkForReturn() {
+    await handleAction("mark-for-return", () => api.post(`/reservations/${reservationId}/mark-for-return`));
   }
 
-  async function handleComplete() {
-    await handleAction("complete", () => api.post(`/reservations/${reservationId}/complete`));
+  async function handleReturn() {
+    await handleAction("return", () => api.post(`/reservations/${reservationId}/return`));
   }
 
   async function handleReopen() {
@@ -234,17 +260,28 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
         {STATE_LABELS[reservation.state]}
       </div>
 
+      {/* Rejection reason — only when latest event is rejected */}
+      {reservation.rejection_reason && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+          <X className="size-4 text-destructive shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-destructive">سبب الرفض</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{reservation.rejection_reason}</p>
+          </div>
+        </div>
+      )}
+
       {/* People */}
       <Card>
         <CardContent className="p-4 flex flex-col gap-3">
           <div className="flex items-center gap-2 text-sm">
             <User className="size-4 text-muted-foreground" />
-            <span className="text-muted-foreground">المنشئ:</span>
+            <span className="text-muted-foreground">اللي حجز:</span>
             <span>{reservation.creator_real_name}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Users className="size-4 text-muted-foreground" />
-            <span className="text-muted-foreground">المستلم:</span>
+            <span className="text-muted-foreground">اللي هيستلم:</span>
             <span>{reservation.receiver_real_name}</span>
           </div>
         </CardContent>
@@ -256,12 +293,16 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="size-4 text-muted-foreground" />
             <span className="text-muted-foreground">الاستلام:</span>
-            <span>{new Date(reservation.pickup_datetime).toLocaleString("ar-SA")}</span>
+            <span>{new Date(reservation.pickup_datetime).toLocaleString("en-GB", { day: "numeric", month: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).replace(/\bam\b/gi, "ص").replace(/\bpm\b/gi, "م")}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Clock className="size-4 text-muted-foreground" />
             <span className="text-muted-foreground">الإرجاع:</span>
-            <span>{new Date(reservation.return_datetime).toLocaleString("ar-SA")}</span>
+            {new Date(reservation.pickup_datetime).toLocaleDateString("en-GB") === new Date(reservation.return_datetime).toLocaleDateString("en-GB") ? (
+              <span>نفس اليوم {new Date(reservation.return_datetime).toLocaleString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true }).replace(/\bam\b/gi, "ص").replace(/\bpm\b/gi, "م")}</span>
+            ) : (
+              <span>{new Date(reservation.return_datetime).toLocaleString("en-GB", { day: "numeric", month: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).replace(/\bam\b/gi, "ص").replace(/\bpm\b/gi, "م")}</span>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -282,12 +323,12 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Package className="size-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold text-muted-foreground">المعدات</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground">الادوات</h2>
             </div>
             {canEdit && (
               <Button variant="outline" size="sm" onClick={() => setAddItemOpen(true)}>
                 <Plus className="size-4" />
-                إضافة معدة
+                إضافة ادوات
               </Button>
             )}
           </div>
@@ -324,7 +365,7 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
               <Users className="size-4 text-muted-foreground" />
               <h2 className="text-sm font-semibold text-muted-foreground">المراجعون</h2>
             </div>
-            {isOrganizer && (
+            {isOrganizer && canEdit && (
               <Button variant="outline" size="sm" onClick={() => setAddReviewerOpen(true)}>
                 <Plus className="size-4" />
                 إضافة مراجع
@@ -340,14 +381,14 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
                   <div className="flex items-center gap-2">
                     <span className="text-sm">{r.real_name || r.username}</span>
                     {r.is_default === 1 && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 h-5">افتراضي</Badge>
+                      <Badge variant="outline" className="text-[10px] px-1.5 h-5">اساسي</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {r.status === "pending" && <Badge variant="secondary">بانتظار</Badge>}
+                    {r.status === "pending" && <Badge variant="secondary">بانتظار الموافقة</Badge>}
                     {r.status === "approved" && <Badge variant="default">موافق</Badge>}
                     {r.status === "rejected" && <Badge variant="destructive">رافض</Badge>}
-                    {isOrganizer && r.is_default === 0 && (
+                    {isOrganizer && canEdit && r.is_default === 0 && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -373,6 +414,13 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
           <Button onClick={handleSubmit} disabled={actionLoading === "submit"}>
             {actionLoading === "submit" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
             إرسال للمراجعة
+          </Button>
+        )}
+
+        {canUnsubmit && (
+          <Button onClick={handleUnsubmit} disabled={actionLoading === "unsubmit"} variant="outline">
+            {actionLoading === "unsubmit" ? <Loader2 className="size-4 animate-spin" /> : <Undo2 className="size-4" />}
+            عودة للمسودة
           </Button>
         )}
 
@@ -427,19 +475,26 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
           </Button>
         )}
 
-        {isOrganizer && reservation.state === "reserved" && (
-          <Button onClick={handleComplete} disabled={actionLoading === "complete"}>
-            {actionLoading === "complete" ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-            إنهاء الحجز
+        {isOrganizer && reservation.state === "picked_up" && (
+          <Button onClick={handleMarkForReturn} disabled={actionLoading === "mark-for-return"}>
+            {actionLoading === "mark-for-return" ? <Loader2 className="size-4 animate-spin" /> : <Package className="size-4" />}
+            تجهيز للإرجاع
           </Button>
         )}
 
-        {isOrganizer && reservation.state === "completed" && (
-          <Button variant="outline" onClick={handleReopen} disabled={actionLoading === "reopen"}>
-            {actionLoading === "reopen" ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
-            إعادة فتح الحجز
-          </Button>
+        {isOrganizer && reservation.state === "reserved" && (
+          <>
+            <Button variant="outline" onClick={handleReopen} disabled={actionLoading === "reopen"}>
+              {actionLoading === "reopen" ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
+              إعادة فتح الحجز
+            </Button>
+            <Button onClick={handleMarkForPickup} disabled={actionLoading === "mark-for-pickup"}>
+              {actionLoading === "mark-for-pickup" ? <Loader2 className="size-4 animate-spin" /> : <PackageOpen className="size-4" />}
+              تجهيز للاستلام
+            </Button>
+          </>
         )}
+
       </div>
 
       {/* History */}
@@ -454,7 +509,11 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
                   <div>
                     <span className="font-medium">{h.real_name || h.username}</span>
                     <span className="text-muted-foreground"> - {h.action}</span>
-                    <span className="text-muted-foreground block">{new Date(h.created_at).toLocaleString("ar-SA")}</span>
+                    {h.details && (() => {
+                      const d = typeof h.details === 'string' ? JSON.parse(h.details) : h.details;
+                      return d.notes ? <p className="text-muted-foreground mt-0.5">{d.notes}</p> : null;
+                    })()}
+                    <span className="text-muted-foreground block">{new Date(h.created_at + 'Z').toLocaleString("en-GB", { day: "numeric", month: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).replace(/\bam\b/gi, "ص").replace(/\bpm\b/gi, "م")}</span>
                   </div>
                 </div>
               ))}
@@ -476,12 +535,24 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
       <AddItemSheet
         open={addItemOpen}
         onOpenChange={setAddItemOpen}
-        reservationId={reservationId}
-        onAdd={async (equipmentId, quantity) => {
-          await handleAction("add-item", () =>
-            api.post(`/reservations/${reservationId}/items`, { equipment_id: equipmentId, quantity })
-          );
-          setAddItemOpen(false);
+        groupId={reservation.group_id}
+        excludeIds={new Set(reservation.items.flatMap(i => [i.equipment_id, ...i.all_attachments.map(a => a.equipment_id)]))}
+        pickupDatetime={reservation.pickup_datetime}
+        returnDatetime={reservation.return_datetime}
+        onAdd={async (items) => {
+          setActionLoading("add-item");
+          try {
+            for (const { equipmentId, quantity } of items) {
+              await api.post(`/reservations/${reservationId}/items`, { equipment_id: equipmentId, quantity });
+            }
+            toast.success("تمت إضافة الادوات");
+            await refresh();
+          } catch {
+            toast.error("فشلت إضافة بعض الادوات");
+          } finally {
+            setActionLoading(null);
+            setAddItemOpen(false);
+          }
         }}
       />
 
@@ -489,6 +560,7 @@ export default function Reservation({ loaderData }: Route.ComponentProps) {
         open={addReviewerOpen}
         onOpenChange={setAddReviewerOpen}
         reservationId={reservationId}
+        groupId={reservation.group_id ?? undefined}
         onAdd={async (accountId) => {
           await handleAction("add-reviewer", () =>
             api.post(`/reservations/${reservationId}/reviewers`, { account_id: accountId })
@@ -513,16 +585,29 @@ function ReservationItemRow({
   onExcludeAttachment: (attachmentId: number) => void;
   onIncludeAttachment: (attachmentId: number) => void;
 }) {
-  const [showAttachments, setShowAttachments] = useState(false);
+  const [fullscreenPhoto, setFullscreenPhoto] = useState(false);
   const excludedIds = new Set(item.excluded_attachments.map(a => a.attachment_id));
+  const { blobUrl, loading } = usePhotoBlobUrl(item.photo, "md", getEquipmentPhotoUrl);
 
   return (
-    <div className="rounded-lg border p-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium">{item.equipment_name}</p>
-          <p className="text-xs text-muted-foreground">{item.group_name}</p>
+    <>
+      {fullscreenPhoto && blobUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center" onClick={() => setFullscreenPhoto(false)}>
+          <img src={blobUrl} alt="" className="max-h-[90dvh] max-w-[90vw] object-contain" onClick={(e) => e.stopPropagation()} />
         </div>
+      )}
+      <div className="rounded-lg border p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {loading ? (
+              <div className="size-10 shrink-0 rounded overflow-hidden bg-muted animate-pulse" />
+            ) : blobUrl ? (
+              <button type="button" onClick={() => setFullscreenPhoto(true)} className="size-10 shrink-0 rounded overflow-hidden">
+                <img src={blobUrl} alt="" className="size-full object-cover cursor-pointer hover:opacity-80 transition-opacity" />
+              </button>
+            ) : null}
+            <p className="text-sm font-medium">{item.equipment_name}</p>
+          </div>
         <div className="flex items-center gap-2">
           {item.quantity > 1 && <Badge variant="secondary">{item.quantity}</Badge>}
           {canEdit && (
@@ -534,7 +619,7 @@ function ReservationItemRow({
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>إزالة المعدة</AlertDialogTitle>
+                  <AlertDialogTitle>إزالة الادوات</AlertDialogTitle>
                   <AlertDialogDescription>إزالة {item.equipment_name} من الحجز؟</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -547,41 +632,44 @@ function ReservationItemRow({
         </div>
       </div>
       {item.all_attachments.length > 0 && (
-        <div className="mt-2">
-          <button
-            type="button"
-            onClick={() => setShowAttachments(!showAttachments)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Paperclip className="size-3" />
-            {item.all_attachments.length} ملحق
-            {showAttachments ? " ▲" : " ▼"}
-          </button>
-          {showAttachments && (
-            <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {item.all_attachments.map(att => {
-                const excluded = excludedIds.has(att.equipment_id);
-                return (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {item.all_attachments.map(att => {
+            const excluded = excludedIds.has(att.equipment_id);
+            return (
+              <div
+                key={att.equipment_id}
+                className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${
+                  excluded
+                    ? "border-destructive/30 text-destructive/60 line-through"
+                    : "border-green-300 text-green-700 dark:border-green-700 dark:text-green-400"
+                }`}
+              >
+                <span>{att.name}</span>
+                {canEdit && !excluded && (
                   <button
-                    key={att.equipment_id}
                     type="button"
-                    disabled={!canEdit}
-                    onClick={() => excluded ? onIncludeAttachment(att.equipment_id) : onExcludeAttachment(att.equipment_id)}
-                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                      excluded
-                        ? "border-destructive/30 text-destructive/60 line-through"
-                        : "border-green-300 text-green-700 dark:border-green-700 dark:text-green-400"
-                    } ${canEdit ? "hover:bg-accent cursor-pointer" : "cursor-default"}`}
+                    onClick={(e) => { e.stopPropagation(); onExcludeAttachment(att.equipment_id); }}
+                    className="transition-colors hover:text-destructive"
                   >
-                    {att.name}
+                    <Trash2 className="size-2.5" />
                   </button>
-                );
-              })}
-            </div>
-          )}
+                )}
+                {canEdit && excluded && !item.blocked_attachment_ids.includes(att.equipment_id) && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onIncludeAttachment(att.equipment_id); }}
+                    className="transition-colors hover:text-green-600"
+                  >
+                    <Plus className="size-2.5" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -596,8 +684,10 @@ function EditReservationSheet({
   reservation: ReservationDetail;
   onSave: (data: { pickup_datetime?: string; return_datetime?: string; notes?: string | null }) => Promise<void>;
 }) {
-  const [pickupDatetime, setPickupDatetime] = useState(reservation.pickup_datetime.slice(0, 16));
-  const [returnDatetime, setReturnDatetime] = useState(reservation.return_datetime.slice(0, 16));
+  const initialPickup = reservation.pickup_datetime.replace(" ", "T").slice(0, 16);
+  const initialReturn = reservation.return_datetime.replace(" ", "T").slice(0, 16);
+  const [pickupDatetime, setPickupDatetime] = useState(initialPickup);
+  const [returnDatetime, setReturnDatetime] = useState(initialReturn);
   const [notes, setNotes] = useState(reservation.notes ?? "");
   const [loading, setLoading] = useState(false);
 
@@ -606,8 +696,8 @@ function EditReservationSheet({
     setLoading(true);
     try {
       await onSave({
-        pickup_datetime: pickupDatetime !== reservation.pickup_datetime.slice(0, 16) ? pickupDatetime : undefined,
-        return_datetime: returnDatetime !== reservation.return_datetime.slice(0, 16) ? returnDatetime : undefined,
+        pickup_datetime: pickupDatetime !== initialPickup ? pickupDatetime : undefined,
+        return_datetime: returnDatetime !== initialReturn ? returnDatetime : undefined,
         notes: notes !== (reservation.notes ?? "") ? (notes.trim() || null) : undefined,
       });
     } catch {} finally {
@@ -622,11 +712,11 @@ function EditReservationSheet({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-4">
           <label className="text-sm font-medium text-muted-foreground">
             وقت الاستلام
-            <Input type="datetime-local" value={pickupDatetime} onChange={(e) => setPickupDatetime(e.target.value)} className="mt-1" />
+            <DatePicker value={pickupDatetime} onChange={setPickupDatetime} showTime />
           </label>
           <label className="text-sm font-medium text-muted-foreground">
             وقت الإرجاع
-            <Input type="datetime-local" value={returnDatetime} onChange={(e) => setReturnDatetime(e.target.value)} className="mt-1" />
+            <DatePicker value={returnDatetime} onChange={setReturnDatetime} showTime />
           </label>
           <label className="text-sm font-medium text-muted-foreground">
             ملاحظات
@@ -646,54 +736,182 @@ function EditReservationSheet({
   );
 }
 
+function SelectedEquipRow2({ item, attachments, onQuantityChange, onRemove }: { item: { equipment_id: number; name: string; photo?: string | null; quantity: number; maxQuantity: number }; attachments: { equipment_id: number; name: string }[]; onQuantityChange: (id: number, qty: number) => void; onRemove: (id: number) => void }) {
+  const [fullscreenPhoto, setFullscreenPhoto] = useState(false);
+  const { blobUrl, loading } = usePhotoBlobUrl(item.photo, "md", getEquipmentPhotoUrl);
+  return (
+    <>
+      {fullscreenPhoto && blobUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center" onClick={() => setFullscreenPhoto(false)}>
+          <img src={blobUrl} alt="" className="max-h-[90dvh] max-w-[90vw] object-contain" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+      <div className="rounded-lg border p-2">
+        <div className="flex items-center gap-2">
+          <div className="size-7 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
+            {loading ? <div className="size-full animate-pulse bg-muted" /> : blobUrl ? <img src={blobUrl} alt="" className="size-full object-cover cursor-pointer hover:opacity-80 transition-opacity" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFullscreenPhoto(true); }} /> : <ImageIcon className="size-3.5 text-muted-foreground" />}
+          </div>
+          <span className="text-sm flex-1 truncate">{item.name}</span>
+      {item.maxQuantity > 1 ? (
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onQuantityChange(item.equipment_id, item.quantity + 1)}
+            disabled={item.quantity >= item.maxQuantity}
+            className="size-7 rounded border flex items-center justify-center text-sm hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            +
+          </button>
+          <span className="w-8 text-center text-xs tabular-nums">{item.quantity}</span>
+          <button
+            type="button"
+            onClick={() => onQuantityChange(item.equipment_id, item.quantity - 1)}
+            disabled={item.quantity <= 1}
+            className="size-7 rounded border flex items-center justify-center text-sm hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            -
+          </button>
+        </div>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => onRemove(item.equipment_id)}
+        className="text-destructive hover:text-destructive/80"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+      </div>
+      {attachments.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {attachments.map(a => (
+            <span key={a.equipment_id} className="text-[10px] px-1.5 py-0.5 rounded-full border border-green-300 text-green-700 dark:border-green-700 dark:text-green-400">
+              {a.name}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+    </>
+  );
+}
+
+function EquipSelectBtn({ item, onClick, disabled }: { item: { equipment_id: number; name: string; photo?: string | null; quantity: number; available_quantity?: number }; onClick: () => void; disabled: boolean }) {
+  const [fullscreenPhoto, setFullscreenPhoto] = useState(false);
+  const { blobUrl, loading } = usePhotoBlobUrl(item.photo, "md", getEquipmentPhotoUrl);
+  return (
+    <>
+      {fullscreenPhoto && blobUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center" onClick={() => setFullscreenPhoto(false)}>
+          <img src={blobUrl} alt="" className="max-h-[90dvh] max-w-[90vw] object-contain" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={`flex items-center gap-2 rounded-lg border p-2.5 text-start hover:bg-accent/50 transition-colors ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
+      >
+        <div className="size-7 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
+          {loading ? <div className="size-full animate-pulse bg-muted" /> : blobUrl ? <img src={blobUrl} alt="" className="size-full object-cover cursor-pointer hover:opacity-80 transition-opacity" onClick={(e) => { e.stopPropagation(); setFullscreenPhoto(true); }} /> : <ImageIcon className="size-3.5 text-muted-foreground" />}
+        </div>
+        <span className="text-sm font-medium flex-1 truncate">{item.name}</span>
+      {item.available_quantity !== undefined
+        ? item.available_quantity < item.quantity && (
+            <Badge variant="secondary" className="text-[10px] shrink-0">
+              {item.available_quantity}/{item.quantity}
+            </Badge>
+          )
+        : item.quantity > 1 && (
+            <Badge variant="secondary" className="text-[10px] shrink-0">
+              {item.quantity}
+            </Badge>
+          )}
+    </button>
+    </>
+  );
+}
+
 function AddItemSheet({
   open,
   onOpenChange,
-  reservationId,
+  groupId,
+  excludeIds,
+  pickupDatetime,
+  returnDatetime,
   onAdd,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  reservationId: string;
-  onAdd: (equipmentId: number, quantity: number) => Promise<void>;
+  groupId: number | null;
+  excludeIds: Set<number>;
+  pickupDatetime: string;
+  returnDatetime: string;
+  onAdd: (items: { equipmentId: number; quantity: number }[]) => Promise<void>;
 }) {
-  const [items, setItems] = useState<{ equipment_id: number; name: string; group_name: string; quantity: number }[]>([]);
+  const [items, setItems] = useState<{ equipment_id: number; name: string; quantity: number; available_quantity?: number; photo?: string | null; parent_equipment_id?: number | null }[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [addQty, setAddQty] = useState("1");
+  const [selectedEquip, setSelectedEquip] = useState<{ equipment_id: number; name: string; quantity: number; maxQuantity: number; photo?: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !groupId) return;
     setLoading(true);
     setSearch("");
-    setSelectedId(null);
-    setAddQty("1");
-    api.get("/equipment/groups")
-      .then(r => {
-        const groups = r.data.data as { group_id: number; group_name: string; access_level: string }[];
-        return Promise.all(
-          groups.map((g: any) =>
-            api.get(`/equipment/groups/${g.group_id}/items`)
-              .then(r => (r.data.data as any[]).map((i: any) => ({ ...i, group_name: g.group_name })))
-          )
-        );
-      })
-      .then(results => setItems(results.flat()))
-      .catch(() => toast.error("فشل تحميل المعدات"))
+    setSelectedEquip([]);
+    api.get(`/equipment/groups/${groupId}/items`, {
+      params: { pickup_datetime: pickupDatetime, return_datetime: returnDatetime },
+    })
+      .then(r => setItems(r.data.data.map((i: any) => ({ equipment_id: i.equipment_id, name: i.name, quantity: i.quantity, available_quantity: i.available_quantity, photo: i.photo, parent_equipment_id: i.parent_equipment_id }))))
+      .catch(() => toast.error("فشل تحميل الادوات"))
       .finally(() => setLoading(false));
-  }, [open]);
+  }, [open, groupId, pickupDatetime, returnDatetime]);
 
-  const filtered = search.trim()
-    ? items.filter(i => i.name.includes(search.trim()))
-    : items;
+  const childrenMap = useMemo(() => {
+    const map = new Map<number, { equipment_id: number; name: string }[]>();
+    for (const i of items) {
+      if (i.parent_equipment_id) {
+        const list = map.get(i.parent_equipment_id) ?? [];
+        list.push({ equipment_id: i.equipment_id, name: i.name });
+        map.set(i.parent_equipment_id, list);
+      }
+    }
+    return map;
+  }, [items]);
+
+  const filtered = items
+    .filter(i => {
+      const available = i.available_quantity ?? i.quantity;
+      return available > 0;
+    })
+    .filter(i => !excludeIds.has(i.equipment_id))
+    .filter(i => !search.trim() || i.name.includes(search.trim()));
+
+  function handleAddEquipment(item: { equipment_id: number; name: string; quantity: number; available_quantity?: number; photo?: string | null; parent_equipment_id?: number | null }) {
+    setSelectedEquip((prev) => {
+      if (prev.some(e => e.equipment_id === item.equipment_id)) return prev;
+      if (item.parent_equipment_id && prev.some(e => e.equipment_id === item.parent_equipment_id)) return prev;
+      const childIds = new Set(items.filter(ei => ei.parent_equipment_id === item.equipment_id).map(ei => ei.equipment_id));
+      const available = item.available_quantity ?? item.quantity;
+      return [...prev.filter(e => !childIds.has(e.equipment_id)), { equipment_id: item.equipment_id, name: item.name, quantity: 1, maxQuantity: available, photo: item.photo }];
+    });
+  }
+
+  function handleRemoveEquipment(equipmentId: number) {
+    setSelectedEquip((prev) => prev.filter(e => e.equipment_id !== equipmentId));
+  }
+
+  function handleQuantityChange(equipmentId: number, qty: number) {
+    setSelectedEquip((prev) =>
+      prev.map(e => e.equipment_id === equipmentId ? { ...e, quantity: Math.max(1, Math.min(qty, e.maxQuantity)) } : e)
+    );
+  }
 
   async function handleAdd() {
-    if (!selectedId) return;
+    if (selectedEquip.length === 0) return;
     setSaving(true);
     try {
-      await onAdd(selectedId, Math.max(1, parseInt(addQty, 10) || 1));
+      await onAdd(selectedEquip.map(e => ({ equipmentId: e.equipment_id, quantity: e.quantity })));
     } catch {} finally {
       setSaving(false);
     }
@@ -702,50 +920,33 @@ function AddItemSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="flex flex-col gap-4 pb-8 max-h-[85dvh] overflow-y-auto">
-        <SheetHeader><SheetTitle>إضافة معدة</SheetTitle></SheetHeader>
+        <SheetHeader><SheetTitle>إضافة ادوات</SheetTitle></SheetHeader>
         <div className="flex flex-col gap-4 px-4">
           <Input
             placeholder="بحث..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+          <div className="flex flex-col gap-2 max-h-40 overflow-y-auto">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-lg" />)
             ) : filtered.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">لا توجد نتائج</p>
             ) : (
               filtered.map(i => (
-                <button
-                  key={i.equipment_id}
-                  type="button"
-                  onClick={() => setSelectedId(i.equipment_id)}
-                  className={`flex items-center justify-between rounded-lg border p-2.5 text-start hover:bg-accent/50 transition-colors ${
-                    selectedId === i.equipment_id ? "border-primary bg-accent/30" : ""
-                  }`}
-                >
-                  <div>
-                    <p className="text-sm font-medium">{i.name}</p>
-                    <p className="text-xs text-muted-foreground">{i.group_name}</p>
-                  </div>
-                  <Badge variant="secondary" className="text-[10px]">{i.quantity}</Badge>
-                </button>
+                <EquipSelectBtn key={i.equipment_id} item={i} onClick={() => handleAddEquipment(i)} disabled={selectedEquip.some(e => e.equipment_id === i.equipment_id) || !!(i.parent_equipment_id && selectedEquip.some(e => e.equipment_id === i.parent_equipment_id))} />
               ))
             )}
           </div>
-          {selectedId && (
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={1}
-                value={addQty}
-                onChange={(e) => setAddQty(e.target.value)}
-                placeholder="الكمية"
-                className="w-24"
-              />
-              <Button onClick={handleAdd} disabled={saving} className="flex-1">
+          {selectedEquip.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs text-muted-foreground">الادوات المختارة:</p>
+              {selectedEquip.map(e => (
+                <SelectedEquipRow2 key={e.equipment_id} item={e} attachments={childrenMap.get(e.equipment_id) ?? []} onQuantityChange={handleQuantityChange} onRemove={handleRemoveEquipment} />
+              ))}
+              <Button onClick={handleAdd} disabled={saving || selectedEquip.length === 0}>
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-                إضافة
+                إضافة ({selectedEquip.length})
               </Button>
             </div>
           )}
@@ -759,11 +960,13 @@ function AddReviewerSheet({
   open,
   onOpenChange,
   reservationId,
+  groupId,
   onAdd,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   reservationId: string;
+  groupId: number | undefined;
   onAdd: (accountId: number) => Promise<void>;
 }) {
   const [accounts, setAccounts] = useState<{ account_id: number; username: string; real_name: string }[]>([]);
@@ -771,12 +974,12 @@ function AddReviewerSheet({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !groupId) return;
     setSearch("");
-    api.get<{ success: boolean; data: { account_id: number; username: string; real_name: string }[] }>("/accounts")
-      .then(r => setAccounts(r.data.data))
-      .catch(() => toast.error("فشل تحميل الحسابات"));
-  }, [open]);
+    api.get<{ success: boolean; data: { account_id: number; username: string; real_name: string; access_level: string }[] }>(`/equipment/groups/${groupId}/members`)
+      .then(r => setAccounts(r.data.data.filter(m => m.access_level === 'organizer')))
+      .catch(() => toast.error("فشل تحميل المراجعين"));
+  }, [open, groupId]);
 
   const filtered = search.trim()
     ? accounts.filter(a => a.real_name.includes(search.trim()) || a.username.includes(search.trim()))
